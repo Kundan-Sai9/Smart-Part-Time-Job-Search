@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>User Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 0;
+            margin: 0;
+        }
+        header {
+            background: #ff5722;
+            width: 100%;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0px 4px 10px rgba(255, 87, 34, 0.5);
+        }
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 20px;
+        }
+        .logo-img {
+            width: 100px;
+            height: auto;
+        }
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+        }
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: color 0.3s;
+        }
+        nav ul li a:hover {
+            color: black;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            color: orange;
+            margin-bottom: 40px;
+        }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+        .card {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            width: 260px;
+            text-align: center;
+            box-shadow: 0px 4px 10px rgba(255, 69, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+        .card h2 {
+            color: #ff4500;
+            font-size: 2.5rem;
+        }
+        .label {
+            color: #ccc;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        .job-block {
+            margin-bottom: 40px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 20px;
+        }
+        .job-title {
+            font-size: 1.5rem;
+            color: gold;
+            margin-bottom: 10px;
+        }
+        .accepted {
+            color: lime;
+            font-weight: bold;
+        }
+        .rejected {
+            color: red;
+        }
+        .pending {
+            color: orange;
+        }
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: orange;
+            color: black;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+        #notification-banner {
+            display: none;
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 300px;
+            max-width: 600px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 1rem;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.7);
+            text-align: center;
+        }
+        #notification-banner.success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #notification-banner.error {
+            background-color: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="nav-container">
+        <img src="part-time.png" alt="logo" class="logo-img" />
+        <nav>
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="jobpost.html">Post Job</a></li>
+                <li><a href="account.html">Edit</a></li>
+                <li><a href="Appliedjobs.html">Applied Jobs</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li id="auth-menu"><a href="login.html" id="auth-link">Login</a></li>
+                <li id="logout-menu" style="display: none;"><a href="#" onclick="logoutUser()">Logout</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+<div id="notification-banner"></div>
+<main class="container">
+    <h1>Your Dashboard</h1>
+    <div class="stats" id="stats"></div>
+</main>
+<section id="allApplicationsSection" style="display: none; padding: 20px;">
+    <h2 style="color: rgb(246, 157, 4);">All Applications for Your Posted Jobs</h2>
+    <div id="all-jobs"></div>
+</section>
+<script>
+let currentUser = null;
+function showNotification(message, type = "success", duration = 3000) {
+    const banner = document.getElementById("notification-banner");
+    banner.textContent = message;
+    banner.className = "";
+    banner.classList.add(type);
+    banner.style.display = "block";
+    setTimeout(() => {
+        banner.style.display = "none";
+    }, duration);
+}
+function logoutUser() {
+    const userId = sessionStorage.getItem("user_id");
+    fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId })
+    })
+    .then(response => {
+        if (response.ok) {
+            window.location.href = "home.html";
+        } else {
+            showNotification("Logout failed.", "error");
+        }
+    })
+    .catch(() => {
+        showNotification("Network error during logout.", "error");
+    });
+}
+function checkLoginStatus() {
+    const userId = sessionStorage.getItem("user_id");
+    if (!userId) {
+        window.location.href = "login.html";
+        return;
+    }
+    fetch(`/api/auth/user-info?userId=${userId}`)
+    .then(response => response.json())
+    .then(data => {
+        console.log("[DEBUG] /api/auth/user-info response:", data);
+        let authMenu = document.getElementById("auth-menu");
+        let logoutMenu = document.getElementById("logout-menu");
+        if (data.user_id) {
+            currentUser = data.user_id;
+            authMenu.innerHTML = `<div><a href="#" id="account-link">${data.full_name}</a></div>`;
+            logoutMenu.style.display = "inline";
+            loadDashboard();
+        } else {
+            logoutMenu.style.display = "none";
+            window.location.href = "login.html";
+        }
+    })
+    .catch((err) => {
+        console.error("[DEBUG] Error in checkLoginStatus:", err);
+        showNotification("Failed to verify login status.", "error");
+    });
+}
+async function fetchAllApplications() {
+    const container = document.getElementById("all-jobs");
+    container.innerHTML = "<p>Loading...</p>";
+    const userId = sessionStorage.getItem("user_id");
+    if (!userId) {
+        container.innerHTML = "<p style='color:red;'>User not logged in.</p>";
+        return;
+    }
+    try {
+        const res = await fetch(`/api/auth/posted-applications?userId=${userId}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        container.innerHTML = "";
+        const jobs = Array.isArray(data) ? data : (Array.isArray(data.jobs) ? data.jobs : []);
+        if (!Array.isArray(jobs) || jobs.length === 0) {
+            container.innerHTML = "<p>No jobs or applications found.</p>";
+            return;
+        }
+        // Hide jobs that have an accepted applicant (if any applicant is accepted, do not show this job)
+        jobs.filter(job => {
+            if (!Array.isArray(job.applicants) || job.applicants.length === 0) return true;
+            // If any applicant is accepted, hide this job
+            return !job.applicants.some(app => (app.status || '').toLowerCase() === 'accepted');
+        }).forEach(job => {
+            console.log('[DEBUG] Job data:', job); // Debug log
+            const div = document.createElement("div");
+            div.className = "job-block";
+            const hasAccepted = job.applicants && job.applicants.some(app => app.status === "Accepted");
+            div.innerHTML = `<div class='job-title'>${job.job_title ?? "Untitled"} (Job ID: ${job.job_id ?? "?"})</div>`;
+            if (Array.isArray(job.applicants) && job.applicants.length > 0) {
+                job.applicants.forEach(app => {
+                    const appDiv = document.createElement("div");
+                    appDiv.className = "card";
+                    let statusHtml = "";
+                    if (app.status === "Pending" && !hasAccepted) {
+                        statusHtml = `<button onclick=\"acceptApplicant(${app.application_id},${job.job_id})\">Accept</button>`;
+                    } else if (app.status === "Accepted") {
+                        statusHtml = `<p class='accepted'>Accepted</p>`;
+                    } else if (app.status === "Rejected") {
+                        statusHtml = `<p class='rejected'>Rejected</p>`;
+                    }
+                    // Check if job type is Technical to show resume option (based on jobpost.html values)
+                    const isTechnicalJob = job.job_type === 'Technical';
+                    
+                    const resumeButtonHtml = isTechnicalJob ? 
+                        `<div style=\"margin-top:8px;\">
+                          <a href=\"/api/files/resume/${app.application_id}\" target=\"_blank\" style=\"text-decoration:none;\">
+                            <button type=\"button\">View Resume</button>
+                          </a>
+                        </div>` : '';
+                    
+                    appDiv.innerHTML = `
+                        <p><strong>User:</strong> ${app.username ?? "Unknown"}</p>
+                        <p><strong>Status:</strong> <span class="${(app.status ?? "pending").toLowerCase()}">${app.status ?? "Pending"}</span></p>
+                        <div>${statusHtml}</div>
+                        ${resumeButtonHtml}
+                    `;
+                    div.appendChild(appDiv);
+                });
+            } else {
+                div.innerHTML += `<p style='color:gray;'>No applicants for this job.</p>`;
+            }
+            container.appendChild(div);
+        });
+    } catch (error) {
+        container.innerHTML = `<p style='color:red;'>Failed to load data: ${error.message}</p>`;
+    }
+}
+async function acceptApplicant(appId, jobId) {
+    if (!confirm("Accept this applicant? This action is final.")) return;
+    document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+    const userId = sessionStorage.getItem("user_id");
+    try {
+        const response = await fetch("/api/auth/approve-application", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ applicationId: Number(appId), jobId: Number(jobId), userId: Number(userId) })
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json();
+        if (result.success) {
+            showNotification("Applicant accepted successfully!", "success");
+            fetchAllApplications();
+            loadDashboard(); // Refresh stats after accepting
+        } else {
+            showNotification(result.error || "Failed to accept applicant.", "error");
+            document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+        }
+    } catch (error) {
+        showNotification("Error processing request: " + error.message, "error");
+        document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+    }
+}
+async function loadDashboard() {
+    try {
+        const userId = sessionStorage.getItem("user_id");
+        const res = await fetch(`/api/auth/dashboard?userId=${userId}`);
+        const data = await res.json();
+        const statsDiv = document.getElementById("stats");
+        statsDiv.innerHTML = "";
+        function card(value, label) {
+            return `<div class="card"><h2>${value}</h2><div class="label">${label}</div></div>`;
+        }
+        /* Show both poster and applicant stats for every user
+         statsDiv.innerHTML += card(data.jobs_posted ?? 0, "Jobs Posted");
+         statsDiv.innerHTML += card(data.total_applicants ?? 0, "Applicants");
+         statsDiv.innerHTML += card(data.total_accepted ?? 0, "Accepted");
+         statsDiv.innerHTML += card(data.applied ?? 0, "Jobs Applied");
+         statsDiv.innerHTML += card(data.pending ?? 0, "Pending");
+         statsDiv.innerHTML += card(data.accepted ?? 0, "Accepted");
+         statsDiv.innerHTML += card(data.rejected ?? 0, "Rejected");*/
+        // Always show applications section
+        const allAppsSection = document.getElementById("allApplicationsSection");
+        if (allAppsSection) {
+            allAppsSection.style.display = "block";
+        }
+        fetchAllApplications();
+        // If you have an applied jobs section, show it too
+        const appliedSection = document.getElementById("appliedJobsSection");
+        if (appliedSection) {
+            appliedSection.style.display = "block";
+        }
+        if (typeof fetchAppliedJobs === "function") {
+            fetchAppliedJobs();
+        }
+    } catch {
+        showNotification("Failed to load dashboard.", "error");
+    }
+}
+// ...existing code...
+
+// --- AI Feature JS ---
+function getProfileScore() {
+  if (!currentUser) {
+    showNotification("Please login to check your profile score.", true);
+    return;
+  }
+  fetch(`/api/profile/score?userId=${currentUser}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("profile-score-result").textContent = data.score ? `Your profile score: ${data.score}` : "Unable to fetch score.";
+    })
+    .catch(() => {
+      document.getElementById("profile-score-result").textContent = "Error fetching profile score.";
+    });
+}
+
+function getJobRecommendations() {
+  if (!currentUser) {
+    showNotification("Please login to get recommendations.", true);
+    return;
+  }
+  fetch(`/api/jobs/recommend?userId=${currentUser}`)
+    .then(res => res.json())
+    .then(data => {
+      const resultDiv = document.getElementById("job-recommendations-result");
+      if (Array.isArray(data) && data.length > 0) {
+        resultDiv.innerHTML = `<ul>${data.map(job => `<li>${job.title} at ${job.company}</li>`).join("")}</ul>`;
+      } else {
+        resultDiv.textContent = "No recommendations found.";
+      }
+    })
+    .catch(() => {
+      document.getElementById("job-recommendations-result").textContent = "Error fetching recommendations.";
+    });
+}
+
+function findSimilarJobs() {
+  const jobTitle = document.getElementById("similar-job-input").value.trim();
+  if (!jobTitle) {
+    showNotification("Enter a job title to find similar jobs.", true);
+    return;
+  }
+  fetch(`/api/jobs/similar?title=${encodeURIComponent(jobTitle)}`)
+    .then(res => res.json())
+    .then(data => {
+      const resultDiv = document.getElementById("similar-jobs-result");
+      if (Array.isArray(data) && data.length > 0) {
+        resultDiv.innerHTML = `<ul>${data.map(job => `<li>${job.title} at ${job.company}</li>`).join("")}</ul>`;
+      } else {
+        resultDiv.textContent = "No similar jobs found.";
+      }
+    })
+    .catch(() => {
+      document.getElementById("similar-jobs-result").textContent = "Error fetching similar jobs.";
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // ...existing code...
+  const scoreBtn = document.getElementById("score-profile-btn");
+  if (scoreBtn) scoreBtn.addEventListener("click", getProfileScore);
+
+  const recommendBtn = document.getElementById("recommend-jobs-btn");
+  if (recommendBtn) recommendBtn.addEventListener("click", getJobRecommendations);
+
+  const similarBtn = document.getElementById("find-similar-jobs-btn");
+  if (similarBtn) similarBtn.addEventListener("click", findSimilarJobs);
+});
+checkLoginStatus();
+</script>
+</body>
+</html>
+

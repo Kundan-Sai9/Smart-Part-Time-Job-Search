@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: black;
+            color: white;
+            padding: 20px;
+        }
+        .test-section {
+            background: #222;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid gold;
+        }
+        button {
+            background: gold;
+            color: black;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            margin: 10px 5px;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: darkgoldenrod;
+        }
+        input {
+            background: black;
+            color: white;
+            border: 1px solid gold;
+            padding: 10px;
+            margin: 5px 0;
+            width: 250px;
+            border-radius: 5px;
+        }
+        #output {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login/Signup Debug Page</h1>
+    
+    <div class="test-section">
+        <h2>Basic Button Test</h2>
+        <button onclick="alert('Button clicked!')">Test Alert Button</button>
+        <button onclick="console.log('Console test'); document.getElementById('output').textContent = 'Button works!'">Test Console Button</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Signup Test</h2>
+        <input type="text" id="debug-name" placeholder="Full Name" value="Debug User"><br>
+        <input type="text" id="debug-username" placeholder="Username" value="debuguser"><br>
+        <input type="email" id="debug-email" placeholder="Email" value="debug@example.com"><br>
+        <input type="password" id="debug-password" placeholder="Password" value="password123"><br>
+        <input type="password" id="debug-confirm" placeholder="Confirm Password" value="password123"><br>
+        <button onclick="testSignup()">Test Signup</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Login Test</h2>
+        <input type="text" id="debug-login-input" placeholder="Username or Email" value="debuguser"><br>
+        <input type="password" id="debug-login-password" placeholder="Password" value="password123"><br>
+        <button onclick="testLogin()">Test Login</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Output</h2>
+        <div id="output">Ready for testing...</div>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            console.log(message);
+        }
+
+        function testSignup() {
+            log('Testing signup...');
+            
+            const data = {
+                fullName: document.getElementById('debug-name').value,
+                username: document.getElementById('debug-username').value,
+                email: document.getElementById('debug-email').value,
+                password: document.getElementById('debug-password').value,
+                confirmPassword: document.getElementById('debug-confirm').value
+            };
+
+            log('Sending data: ' + JSON.stringify(data));
+
+            fetch("/api/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                log('Response status: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                log('Response data: ' + JSON.stringify(data));
+            })
+            .catch(err => {
+                log('Error: ' + err.message);
+                console.error(err);
+            });
+        }
+
+        function testLogin() {
+            log('Testing login...');
+            
+            const data = {
+                userInput: document.getElementById('debug-login-input').value,
+                password: document.getElementById('debug-login-password').value
+            };
+
+            log('Sending data: ' + JSON.stringify(data));
+
+            fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                log('Response status: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                log('Response data: ' + JSON.stringify(data));
+            })
+            .catch(err => {
+                log('Error: ' + err.message);
+                console.error(err);
+            });
+        }
+
+        // Test if basic JavaScript is working
+        log('JavaScript loaded successfully');
+        
+        // Test form submission prevention
+        document.addEventListener('DOMContentLoaded', function() {
+            log('DOM Content Loaded');
+        });
+    </script>
+</body>
+</html>

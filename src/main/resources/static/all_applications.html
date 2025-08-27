@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>All Applications</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            color: orange;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .job-block {
+            margin-bottom: 40px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 20px;
+        }
+        .job-title {
+            font-size: 1.5rem;
+            color: gold;
+            margin-bottom: 10px;
+        }
+        .card {
+            background-color: #222;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 0 8px #333;
+        }
+        .accepted {
+            color: lime;
+            font-weight: bold;
+        }
+        .rejected {
+            color: red;
+        }
+        .pending {
+            color: orange;
+        }
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background: orange;
+            color: black;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        button:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 300px;
+            max-width: 90%;
+            padding: 15px 25px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            text-align: center;
+        }
+        #notification.success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #notification.error {
+            background-color: #f44336;
+            color: white;
+        }
+    </style>
+    <script>
+        function showNotification(message, type = "success", duration = 3000) {
+            const notif = document.getElementById("notification");
+            notif.textContent = message;
+            notif.className = "";
+            notif.classList.add(type);
+            notif.style.display = "block";
+            setTimeout(() => {
+                notif.style.display = "none";
+            }, duration);
+        }
+
+        async function fetchAllApplications() {
+            const container = document.getElementById("all-jobs");
+            const debugDiv = document.getElementById("debug-info");
+            container.innerHTML = "<p>Loading...</p>";
+            const userId = sessionStorage.getItem("user_id");
+            debugDiv.innerHTML = `<strong>Logged-in User ID:</strong> ${userId ?? '<span style=\'color:red\'>Not set</span>'}`;
+            if (!userId) {
+                container.innerHTML = "<p style='color:red;'>User not logged in.</p>";
+                debugDiv.innerHTML += '<br><span style="color:red">Session user_id missing. Please log in as the job poster.</span>';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/auth/posted-applications?userId=${userId}`);
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const data = await res.json();
+                debugDiv.innerHTML += `<br><strong>Jobs returned from backend:</strong> <pre style='color:yellow; background:#222; padding:8px; border-radius:6px; max-height:200px; overflow:auto;'>${JSON.stringify(data, null, 2)}</pre>`;
+                container.innerHTML = "";
+                const jobs = Array.isArray(data) ? data : (Array.isArray(data.jobs) ? data.jobs : []);
+                if (!Array.isArray(jobs) || jobs.length === 0) {
+                    container.innerHTML = "<p style='color:orange;'>You have not posted any jobs, or no one has applied yet.</p>";
+                    return;
+                }
+                let hasAnyApplicant = false;
+                jobs.forEach(job => {
+                    const div = document.createElement("div");
+                    div.className = "job-block";
+                    const hasAccepted = job.applicants && job.applicants.some(app => app.status === "Accepted");
+                    div.innerHTML = `<div class='job-title'>${job.job_title ?? "Untitled"} (Job ID: ${job.job_id ?? "?"})</div>`;
+                    if (Array.isArray(job.applicants) && job.applicants.length > 0) {
+                        hasAnyApplicant = true;
+                        job.applicants.forEach(app => {
+                            const appDiv = document.createElement("div");
+                            appDiv.className = "card";
+                            appDiv.innerHTML = `
+                                <p><strong>User:</strong> ${app.username ?? "Unknown"}</p>
+                                <p><strong>Status:</strong> <span class="${(app.status ?? "pending").toLowerCase()}">${app.status ?? "Pending"}</span></p>
+                                <div>
+                                    ${app.status === "Pending" && !hasAccepted
+                                        ? `<button onclick=\"acceptApplicant(${app.application_id},${job.job_id})\">Accept</button>`
+                                        : (app.status === "Accepted" ? `<p class='accepted'>Accepted</p>` : "")}
+                                </div>
+                            `;
+                            div.appendChild(appDiv);
+                        });
+                    } else {
+                        div.innerHTML += `<p style='color:gray;'>No applicants for this job.</p>`;
+                    }
+                    container.appendChild(div);
+                });
+                if (!hasAnyApplicant) {
+                    container.innerHTML += `<p style='color:orange;'>None of your jobs have any applicants yet.</p>`;
+                }
+            } catch (error) {
+                container.innerHTML = `<p style='color:red;'>Failed to load data: ${error.message}</p>`;
+                debugDiv.innerHTML += `<br><span style='color:red'>Error: ${error.message}</span>`;
+            }
+        }
+
+        async function acceptApplicant(appId, jobId) {
+            if (!confirm("Accept this applicant? This action is final.")) return;
+            document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            const userId = sessionStorage.getItem("user_id");
+            try {
+                const response = await fetch("/api/auth/approve-application", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ applicationId: Number(appId), jobId: Number(jobId), userId: Number(userId) })
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                if (result.success) {
+                    showNotification("Applicant accepted successfully!", "success");
+                    fetchAllApplications();
+                } else {
+                    showNotification(result.error || "Failed to accept applicant.", "error");
+                    document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                }
+            } catch (error) {
+                showNotification("Error processing request: " + error.message, "error");
+                document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+            }
+        }
+
+        window.onload = fetchAllApplications;
+    </script>
+</head>
+<body>
+    <h1>All Applications for Your Posted Jobs</h1>
+    <div id="debug-info" style="color:yellow; font-size:0.95rem; margin-bottom:20px;"></div>
+    <div id="notification"></div>
+    <div id="all-jobs"></div>
+</body>
+</html>

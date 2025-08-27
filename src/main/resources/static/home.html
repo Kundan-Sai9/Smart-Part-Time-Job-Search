@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+  <title>Home</title>
+  <link rel="stylesheet" href="styles.css">
+  
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <img src="part-time.png" alt="logo" class="logo-img" />
+      <nav>
+        <ul>
+          <li><a href="home.html">Home</a></li>
+          <li><a href="jobpost.html">Post Job</a></li>
+          <li><a href="account.html">Edit</a></li>
+          <li><a href="Appliedjobs.html">Applied Jobs</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li id="auth-menu"><a href="login.html" id="auth-link">Login</a></li>
+          <li id="logout-menu" style="display: none;">
+            <a href="#" class="nav-link" id="logout-link">Logout</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  </header>
+
+  <!-- Notification container -->
+  <div id="notification-message" role="alert" aria-live="assertive" aria-atomic="true">
+    <span class="icon">✔️</span>
+    <span class="message-text"></span>
+    <button type="button" class="close-btn" aria-label="Close notification">&times;</button>
+  </div>
+
+  <main>
+  
+    <section class="content">
+      <h1>Smart Part Time Job Search Portal</h1>
+      <p>Find the best opportunities that match your skills.</p>
+    </section>
+
+    <div class="search-container">
+      <input type="text" id="search-input" placeholder="Search jobs..." />
+      <button id="search-btn">Search</button>
+    </div>
+
+   
+    <div class="container" id="jobs-container">
+      <!-- Jobs will be loaded here dynamically from the backend -->
+    </div>
+
+    <!-- AI Features Section -->
+    <section class="ai-features-section" style="background: #1a1a1a; padding: 40px 20px; margin: 40px 0; border-radius: 15px; border: 1px solid #333;">
+      <h2 style="text-align: center; margin-bottom: 30px; color: #ff5722;"> AI-Powered Features</h2>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto;">
+        
+        <!-- Profile Scoring -->
+        <div class="ai-feature-card" style="background: #2a2a2a; padding: 25px; border-radius: 12px; border-left: 4px solid #ff5722;">
+          <h3 style="color: #ff5722; margin-bottom: 15px;"> AI Profile Analysis</h3>
+          <p style="margin-bottom: 20px; color: #ccc;">Get an AI-powered analysis of your profile completeness and suggestions for improvement using advanced language models.</p>
+          <button id="profile-score-btn" class="ai-feature-btn" onclick="getProfileScore()">Analyze My Profile</button>
+          <div id="profile-score-result" style="margin-top: 15px; min-height: 50px;"></div>
+        </div>
+        
+        <!-- Job Recommendations -->
+        <div class="ai-feature-card" style="background: #2a2a2a; padding: 25px; border-radius: 12px; border-left: 4px solid #ff5722;">
+          <h3 style="color: #ff5722; margin-bottom: 15px;"> AI-Powered Job Recommendations</h3>
+          <p style="margin-bottom: 20px; color: #ccc;">Get personalized job recommendations based on your profile, skills, preferences, and job application history using advanced AI matching algorithms.</p>
+          <button id="job-recommendations-btn" class="ai-feature-btn" onclick="getJobRecommendations()">Get Smart Recommendations</button>
+          <div id="job-recommendations-result" style="margin-top: 15px; min-height: 50px;"></div>
+        </div>
+        
+      </div>
+      
+      <div style="text-align: center; margin-top: 30px; padding: 20px; background: rgba(255, 87, 34, 0.1); border-radius: 10px;">
+        <p style="color: #ff5722; margin: 0;"><strong> Powered by Cohere AI</strong></p>
+        <p style="color: #ccc; margin: 5px 0 0 0; font-size: 0.9rem;">Advanced language models provide intelligent insights for your job search</p>
+      </div>
+    </section>
+
+    <!-- Resume Upload Modal -->
+    <div id="resumeModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center;">
+      <div style="background:#222; color:white; padding:30px 20px; border-radius:10px; width:90%; max-width:400px; margin:auto; position:relative;">
+        <button id="closeResumeModal" style="position:absolute; top:10px; right:15px; background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+        <h2>Upload Resume</h2>
+        <form id="resumeForm">
+          <label for="resumeInput" style="display:block; margin-bottom:5px; color:#ffcc00; font-size:0.95em;">
+            Accepted file types: PDF, DOC, DOCX. Max size: 2MB.
+          </label>
+          <input type="file" name="resume" id="resumeInput" accept=".pdf,.doc,.docx" required style="margin-bottom:15px; color:white;">
+          <input type="hidden" name="jobId" id="modalJobId">
+          <button type="submit" style="background:#ff5722; color:black; width:100%; padding:10px; border:none; border-radius:5px; font-weight:bold;">Submit Application</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="api-utils.js"></script>
+  <script src="theme.js"></script>
+  <script>
+    let currentUser = null;
+
+    // --- AI Feature JS (Updated for Cohere API) ---
+    // Profile Completion Scoring
+    async function getProfileScore() {
+      if (!currentUser) {
+        showNotification("Please login to check your profile score.", true);
+        return;
+      }
+      
+      try {
+        // Show loading state
+        const resultDiv = document.getElementById("profile-score-result");
+        resultDiv.textContent = "Analyzing profile with AI...";
+        
+        const data = await ApiUtils.AI.getProfileScore(currentUser);
+        
+        if (data.score !== undefined) {
+          resultDiv.innerHTML = `
+            <div class="ai-result">
+              <h4> AI Profile Analysis</h4>
+              <p><strong>Score:</strong> ${data.score}/100</p>
+              <p><strong>Suggestion:</strong> ${data.suggestion || 'Keep improving your profile!'}</p>
+            </div>
+          `;
+        } else {
+          resultDiv.textContent = "Unable to analyze profile. Please try again.";
+        }
+      } catch (error) {
+        console.error('Profile scoring error:', error);
+        document.getElementById("profile-score-result").textContent = "Error analyzing profile. Please try again later.";
+      }
+    }
+
+    // AI-Powered Job Recommendations
+    async function getJobRecommendations() {
+      if (!currentUser) {
+        showNotification("Please login to get personalized recommendations.", true);
+        return;
+      }
+      
+      try {
+        // Show loading state
+        const resultDiv = document.getElementById("job-recommendations-result");
+        resultDiv.innerHTML = `
+          <div class="ai-result">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="loading-spinner" style="width: 20px; height: 20px; border: 2px solid #333; border-top: 2px solid #ff5722; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+              <span> AI is analyzing your profile and matching with jobs...</span>
+            </div>
+          </div>
+        `;
+        
+        // Get user profile data first
+        const userResponse = await fetch(`/api/auth/user-info?userId=${currentUser.id || currentUser.user_id}`);
+        const userProfile = await userResponse.json();
+        
+        // Use the same working endpoint to get all jobs
+        const jobsResponse = await fetch("/api/jobs");
+        if (!jobsResponse.ok) {
+          throw new Error(`HTTP error! status: ${jobsResponse.status}`);
+        }
+        const allJobs = await jobsResponse.json();
+        
+        console.log("AI Recommendations - User Profile:", userProfile);
+        console.log("AI Recommendations - All Jobs:", allJobs);
+        
+        // Filter out user's own jobs and already applied jobs
+        const currentUserId = currentUser.id || currentUser.user_id;
+        const availableJobs = allJobs.filter(job => {
+          return job.posted_by != currentUserId;
+        });
+        
+        // Use actual Cohere AI for intelligent job recommendations
+        const userSkills = (userProfile.skills || "").toLowerCase().split(/[,\s]+/).filter(s => s.length > 0);
+        const userLocation = (userProfile.preferred_location || "").toLowerCase();
+        const userJobType = (userProfile.preferred_job_type || "").toLowerCase();
+        
+        console.log("User Skills for matching:", userSkills);
+        console.log("User Preferred Location:", userLocation);
+        console.log("User Preferred Job Type:", userJobType);
+        
+        // Prepare data for Cohere AI analysis
+        const userProfileText = `
+          User Profile:
+          - Skills: ${userProfile.skills || 'Not specified'}
+          - Experience: ${userProfile.experience || 'Not specified'}
+          - Preferred Location: ${userProfile.preferred_location || 'Not specified'}
+          - Preferred Job Type: ${userProfile.preferred_job_type || 'Not specified'}
+          - Bio: ${userProfile.bio || 'Not specified'}
+        `;
+        
+        // Prepare job data for AI analysis
+        const jobsForAI = availableJobs.slice(0, 10).map(job => ({
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          salary: job.salary,
+          description: job.description,
+          skills: job.skills || 'Not specified',
+          jobType: job.jobType || 'Not specified'
+        }));
+        
+        // Call Cohere AI for intelligent job matching
+        const aiResponse = await fetch('/api/ai/job-recommendations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userProfile: userProfileText,
+            jobs: jobsForAI,
+            userId: currentUser.id || currentUser.user_id
+          })
+        });
+        
+        if (!aiResponse.ok) {
+          throw new Error('AI recommendation service failed');
+        }
+        
+        const aiResult = await aiResponse.json();
+        console.log("Cohere AI Response:", aiResult);
+        console.log("Jobs sent to AI:", jobsForAI.length);
+        console.log("AI returned recommendations:", aiResult.recommendations ? aiResult.recommendations.length : 0);
+        
+        // Process AI recommendations
+        let topRecommendations = [];
+        if (aiResult.recommendations && aiResult.recommendations.length > 0) {
+          // Debug: print all available job IDs and all aiRec.jobId values
+          console.log('Available Job IDs:', availableJobs.map(j => j.id));
+          console.log('AI Recommendation jobIds:', aiResult.recommendations.map(r => r.jobId));
+          console.log('AI Recommendation scores:', aiResult.recommendations.map(r => r.matchScore));
+          topRecommendations = aiResult.recommendations.map(aiRec => {
+            const job = availableJobs.find(j => Number(j.id) === Number(aiRec.jobId));
+            if (!job) {
+              console.log(`Warning: AI returned jobId ${aiRec.jobId} but no matching job found in availableJobs`);
+            }
+            return {
+              job: job,
+              score: aiRec.matchScore,
+              matchReasons: aiRec.reasons || []
+            };
+          }).filter(rec => rec.job); // Filter out jobs that weren't found
+          console.log("Mapped recommendations (after filtering):", topRecommendations.length);
+        } else {
+          // Fallback to basic matching if AI fails
+          console.log("AI failed, using fallback matching");
+          topRecommendations = availableJobs.slice(0, 5).map(job => ({
+            job: job,
+            score: 50,
+            matchReasons: ['AI analysis temporarily unavailable - showing recent jobs']
+          }));
+        }
+        
+        console.log("Final AI Recommendations:", topRecommendations);
+        
+        // Create recommendations data structure
+        const data = {
+          recommendations: topRecommendations.filter(rec => rec.job).map(rec => ({
+            id: rec.job.id,
+            title: rec.job.title,
+            company: rec.job.company,
+            location: rec.job.location,
+            salary: rec.job.salary,
+            description: rec.job.description,
+            match_score: Math.round(rec.score),
+            match_reasons: rec.matchReasons
+          })),
+          total_jobs_analyzed: jobsForAI.length, // Use the actual number sent to AI
+          total_available_jobs: availableJobs.length, // Total available jobs
+          insights: aiResult.insights || [
+            userSkills.length > 0 ? `AI analyzed jobs matching your ${userSkills.length} key skills` : "Add skills to your profile for better AI matches",
+            availableJobs.length > 0 ? `Cohere AI analyzed ${jobsForAI.length} positions and found ${topRecommendations.length} good matches` : "No jobs available currently"
+          ]
+        };
+        
+        if (data.recommendations && data.recommendations.length > 0) {
+            // Fix elongation: clear profile score container
+            const profileScoreDiv = document.getElementById("profile-score-result");
+            if (profileScoreDiv) profileScoreDiv.innerHTML = "";
+            resultDiv.innerHTML = `
+              <div class="ai-result" style="background: #222; border-radius: 12px; box-shadow: 0 4px 16px rgba(255,87,34,0.15); padding: 25px;">
+                <h4 style="color: #ff5722; margin-bottom: 15px;">Your Personalized Job Recommendations</h4>
+                <div style="background: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                  <p style="color: #ff5722; margin: 0 0 5px 0; font-weight: bold;">Analysis Summary</p>
+                  <p style="color: #fff; margin: 0; font-size: 0.85rem;">Analyzed ${data.total_jobs_analyzed} available positions with your skills</p>
+                </div>
+                ${data.insights && data.insights.length > 0 ? `
+                  <div style="background: #222; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="color: #ff5722; margin: 0 0 8px 0; font-weight: bold;">AI Matching Insights</p>
+                    ${data.insights.map(insight => `<p style="color: #fff; margin: 0 0 5px 0; font-size: 0.85rem;">• ${insight}</p>`).join('')}
+                  </div>
+                ` : ''}
+                <div class="recommendations-list">
+                    ${data.recommendations.map((rec, index) => `
+                      <div class="recommendation-item" style="background: #333; padding: 24px; margin: 24px 0; border-radius: 12px; border-left: 4px solid #ff5722; box-shadow: 0 4px 16px rgba(255,87,34,0.12);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                          <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                              <h5 style="color: #fff; margin: 0; font-size: 1.1rem;">${rec.title}</h5>
+                              ${index === 0 ? '<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold;">TOP MATCH</span>' : ''}
+                            </div>
+                            <p style="color: #ff5722; margin: 0 0 8px 0; font-weight: bold;">${rec.company}</p>
+                          </div>
+                          <div style="text-align: right;">
+                            <span style="background: #ff5722; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">
+                              ${rec.match_score}% Match
+                            </span>
+                          </div>
+                        </div>
+                        <p style="color: #fff; margin: 0 0 8px 0; font-size: 0.9rem;">${rec.location || 'Location not specified'}</p>
+                        ${rec.salary ? `<p style="color: #ff5722; margin: 0 0 10px 0; font-weight: bold;">${rec.salary}</p>` : ''}
+                        <p style="color: #fff; font-size: 0.85rem; margin: 0 0 12px 0; line-height: 1.4;">
+                          ${rec.description ? rec.description.substring(0, 200) + '...' : 'No description available'}
+                        </p>
+                        ${rec.match_reasons && rec.match_reasons.length > 0 ? `
+                          <div style="background: #222; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                            <p style="color: #ff5722; margin: 0 0 5px 0; font-size: 0.8rem; font-weight: bold;">Why this matches you:</p>
+                            ${rec.match_reasons.map(reason => `<p style="color: #fff; margin: 0 0 3px 0; font-size: 0.75rem;">• ${reason}</p>`).join('')}
+                          </div>
+                        ` : ''}
+                      </div>
+                    `).join('')}
+                </div>
+                <div style="text-align: center; margin-top: 20px; padding: 15px; background: #222; border-radius: 8px;">
+                  <p style="color: #ff5722; margin: 0 0 8px 0; font-weight: bold;">Want Even Better Recommendations?</p>
+                  <p style="color: #fff; margin: 0 0 10px 0; font-size: 0.85rem;">Update your profile with more skills and preferences for improved AI matching</p>
+                  <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="window.location.href='profile.html'" style="background: #ff5722; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                      Update Profile
+                    </button>
+                    <button onclick="loadJobs()" style="background: transparent; color: #ff5722; border: 1px solid #ff5722; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                      Browse All Jobs
+                    </button>
+                  </div>
+                </div>
+              </div>
+          `;
+        } else {
+          // If no recommendations, show message
+          resultDiv.innerHTML = `
+            <div class="ai-result">
+              <h4 style="color: #ff5722;"> Job Recommendations</h4>
+              <div style="background: rgba(255, 87, 34, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="color: #ff5722; margin: 0 0 8px 0; font-weight: bold;"> Analysis Complete</p>
+                <p style="color: #ccc; margin: 0 0 10px 0; font-size: 0.9rem;">No strong matches found based on your current profile.</p>
+                <p style="color: #ccc; margin: 0; font-size: 0.85rem;">💡 Add more skills to your profile for better recommendations!</p>
+              </div>
+              <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button onclick="window.location.href='profile.html'" style="background: #ff5722; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                  Update Profile
+                </button>
+                <button onclick="loadJobs()" style="background: transparent; color: #ff5722; border: 1px solid #ff5722; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                  View All Jobs
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Job recommendations error:', error);
+        document.getElementById("job-recommendations-result").innerHTML = `
+          <div class="ai-result">
+            <h4 style="color: #f44336;"> Error</h4>
+            <p style="color: #ccc;">Failed to get recommendations. Please try again later.</p>
+            <p style="color: #888; font-size: 0.8rem;">Error: ${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    // Show notification (message, isError=false)
+    function showNotification(message, isError = false) {
+  const notif = document.getElementById("notification-message");
+  if (!notif) return;
+
+  // Clear previous timeout if any
+  if (notif.hideTimeout) {
+    clearTimeout(notif.hideTimeout);
+  }
+
+  // Set message text and styles
+  const messageText = notif.querySelector(".message-text");
+  if (messageText) messageText.textContent = message;
+  notif.classList.toggle("error", isError);
+  notif.classList.add("show");
+
+  // Show proper icon
+  const icon = notif.querySelector(".icon");
+  if (icon) icon.textContent = isError ? "❌" : "✔️";
+
+  // Auto hide after 3 seconds
+  notif.hideTimeout = setTimeout(() => {
+    notif.classList.remove("show");
+  }, 3000);
+}
+
+// Close button event listener
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.querySelector("#notification-message .close-btn");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      const notif = document.getElementById("notification-message");
+      if (notif) {
+        notif.classList.remove("show");
+        if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+      }
+    });
+  }
+});
+
+
+    // Check login status & update UI
+    function checkLoginStatus() {
+      const userId = sessionStorage.getItem("user_id");
+      if (!userId) {
+        const authMenu = document.getElementById("auth-menu");
+        const logoutMenu = document.getElementById("logout-menu");
+        authMenu.innerHTML = `<a href="login.html">Login</a>`;
+        logoutMenu.style.display = "none";
+        return;
+      }
+
+      fetch(`/api/auth/user-info?userId=${userId}`, {
+        method: "GET"
+      })
+      .then(response => response.json())
+      .then(data => {
+        const authMenu = document.getElementById("auth-menu");
+        const logoutMenu = document.getElementById("logout-menu");
+
+        if (data.user_id) {
+          currentUser = {
+            id: data.user_id,
+            user_id: data.user_id,
+            full_name: data.full_name,
+            username: data.username,
+            email: data.email
+          };
+          authMenu.innerHTML = `
+            <div>
+              <a href="profile.html" id="account-link">${data.full_name}</a>
+            </div>
+          `;
+          logoutMenu.style.display = "inline";
+        } else {
+          currentUser = null;
+          authMenu.innerHTML = `<a href="login.html" id="auth-link">Login</a>`;
+          logoutMenu.style.display = "none";
+        }
+      })
+      .catch(error => {
+        console.error("Error checking login status:", error);
+        showNotification("Failed to load user information", true);
+      });
+    }
+
+    // Load all jobs and display
+    function loadJobs() {
+      fetch("/api/jobs")
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          const jobContainer = document.getElementById("jobs-container");
+          jobContainer.innerHTML = "";
+
+          if (!Array.isArray(data) || data.length === 0) {
+            jobContainer.innerHTML = `<p style="color:white; text-align:center;">No jobs found.</p>`;
+            showNotification("No jobs available at the moment", false);
+            return;
+          }
+
+          showNotification(`${data.length} jobs loaded successfully`, false);
+
+          // Hide jobs that have an accepted applicant (case-insensitive)
+          const availableJobs = data.filter(job => {
+            if (!Array.isArray(job.applicants) || job.applicants.length === 0) return true;
+            return !job.applicants.some(app => String(app.status).toLowerCase() === "accepted");
+          });
+
+          availableJobs.forEach(job => {
+            const jobCard = document.createElement("div");
+            jobCard.classList.add("card");
+
+            // Prepare apply button
+            const applyBtn = document.createElement("button");
+            applyBtn.classList.add("apply-btn");
+
+            // Fix: Check if currentUser exists before accessing its properties
+            const currentUserId = currentUser ? (currentUser.id || currentUser.user_id || currentUser) : null;
+            if (currentUserId && currentUserId == job.posted_by) {
+              applyBtn.textContent = "You Posted This";
+              applyBtn.disabled = true;
+              applyBtn.style.background = "gray";
+              applyBtn.style.cursor = "not-allowed";
+            } else if (!currentUser) {
+              applyBtn.textContent = "Login to Apply";
+              applyBtn.addEventListener("click", () => {
+                window.location.href = "login.html";
+              });
+            } else {
+              applyBtn.textContent = "Apply";
+              applyBtn.addEventListener("click", () => {
+                // Always check for technical job type (case-insensitive)
+                const isTechnical = (job.jobType && job.jobType.toLowerCase() === "technical") || (job.job_type && job.job_type.toLowerCase() === "technical");
+                if (isTechnical) {
+                  document.getElementById("resumeModal").style.display = "flex";
+                  document.getElementById("modalJobId").value = job.id;
+                } else {
+                  applyForJob(job.id);
+                }
+              });
+            }
+
+            jobCard.innerHTML = `
+              <h2 class="title">${job.title}</h2>
+              <p><strong>Company:</strong> ${job.company}</p>
+              <p><strong>Location:</strong> ${job.location}</p>
+              <p><strong>Salary:</strong> ${job.salary}</p>
+              ${job.skills ? `<p><strong>Required Skills:</strong> <span style="color: #ff5722; font-weight: bold;">${job.skills}</span></p>` : ''}
+              <p>${job.description}</p>
+            `;
+            jobCard.appendChild(applyBtn);
+            jobContainer.appendChild(jobCard);
+          });
+        })
+        .catch(error => console.error("Error fetching jobs:", error));
+    }
+
+    // Load all jobs - alias for loadJobs function for compatibility
+    function loadAllJobs() {
+      loadJobs();
+    }
+
+    // Search jobs with query from input
+    function searchJobs() {
+      const searchInput = document.getElementById("search-input");
+      const searchQuery = searchInput.value.trim();
+
+      fetch(`/api/jobs?search=${encodeURIComponent(searchQuery)}`)
+        .then(response => response.json())
+        .then(data => {
+          const jobContainer = document.getElementById("jobs-container");
+          jobContainer.innerHTML = "";
+
+          if (!Array.isArray(data) || data.length === 0) {
+            jobContainer.innerHTML = `<p style="color:white; text-align:center;">No jobs found for '${searchQuery}'.</p>`;
+            return;
+          }
+
+          data.forEach(job => {
+            const jobCard = document.createElement("div");
+            jobCard.classList.add("card");
+
+            const applyBtn = document.createElement("button");
+            applyBtn.classList.add("apply-btn");
+
+            const currentUserId = currentUser ? (currentUser.id || currentUser.user_id || currentUser) : null;
+            if (currentUserId && currentUserId == job.posted_by) {
+              applyBtn.textContent = "You Posted This";
+              applyBtn.disabled = true;
+              applyBtn.style.background = "gray";
+              applyBtn.style.cursor = "not-allowed";
+            } else {
+              applyBtn.textContent = "Apply";
+              applyBtn.addEventListener("click", () => applyForJob(job.id));
+            }
+
+            jobCard.innerHTML = `
+              <h2 class="title">${job.title}</h2>
+              <p><strong>Company:</strong> ${job.company}</p>
+              <p><strong>Location:</strong> ${job.location}</p>
+              <p><strong>Salary:</strong> ${job.salary}</p>
+              ${job.skills ? `<p><strong>Required Skills:</strong> <span style="color: #ff5722; font-weight: bold;">${job.skills}</span></p>` : ''}
+              <p>${job.description}</p>
+            `;
+            jobCard.appendChild(applyBtn);
+            jobContainer.appendChild(jobCard);
+          });
+        })
+        .catch(error => {
+          console.error("Error searching jobs:", error);
+          showNotification("Search failed. Please try again.", true);
+        });
+    }
+
+    // Apply for a job with jobId (non-technical, no resume)
+    function applyForJob(jobId) {
+      if (!currentUser) {
+        showNotification("Please login to apply for jobs", true);
+        window.location.href = "login.html";
+        return;
+      }
+      const userIdNum = Number(currentUser.id || currentUser.user_id || currentUser);
+      const jobIdNum = Number(jobId);
+      if (!userIdNum || !jobIdNum) {
+        showNotification("User ID and Job ID are required", true);
+        return;
+      }
+      const formData = new FormData();
+      formData.append("jobId", jobIdNum);
+      formData.append("userId", userIdNum);
+      fetch("/api/auth/apply-job", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => {
+        return response.json().then(data => ({
+          ok: response.ok,
+          status: response.status,
+          data: data
+        }));
+      })
+      .then(result => {
+        if (result.ok && !result.data.error) {
+          showNotification(result.data.message || "Applied successfully!");
+        } else {
+          // Handle specific error messages more user-friendly
+          const errorMsg = result.data.error || result.data.message || "Application failed";
+          if (errorMsg.includes('already applied')) {
+            showNotification("You have already applied for this job!", false); // Not an error, just info
+          } else if (errorMsg.includes('your own posted job')) {
+            showNotification("You cannot apply to your own posted job!", false);
+          } else {
+            showNotification("Error: " + errorMsg, true);
+          }
+        }
+      })
+      .catch(error => {
+        console.error("Error applying:", error);
+        showNotification("Failed to apply. Please try again.", true);
+      });
+    }
+
+    // Handle resume modal submission for technical jobs
+    document.addEventListener("DOMContentLoaded", function() {
+      const resumeModal = document.getElementById("resumeModal");
+      const closeResumeModal = document.getElementById("closeResumeModal");
+      const resumeForm = document.getElementById("resumeForm");
+      closeResumeModal.onclick = function() {
+        resumeModal.style.display = "none";
+        resumeForm.reset();
+      };
+      resumeModal.onclick = function(e) {
+        if (e.target === resumeModal) {
+          resumeModal.style.display = "none";
+          resumeForm.reset();
+        }
+      };
+      resumeForm.onsubmit = function(e) {
+        e.preventDefault();
+        if (!currentUser) {
+          showNotification("Please login to apply for jobs", true);
+          window.location.href = "login.html";
+          return;
+        }
+        const userIdNum = Number(currentUser.id || currentUser.user_id || currentUser);
+        const jobIdNum = Number(document.getElementById("modalJobId").value);
+        const resumeFile = document.getElementById("resumeInput").files[0];
+        if (!userIdNum || !jobIdNum) {
+          showNotification("User ID and Job ID are required", true);
+          return;
+        }
+        if (!resumeFile) {
+          showNotification("Resume file is required for technical jobs", true);
+          document.getElementById("resumeInput").focus();
+          return;
+        }
+        const formData = new FormData();
+        formData.append("userId", userIdNum);
+        formData.append("jobId", jobIdNum);
+        formData.append("resume", resumeFile);
+        fetch("/api/auth/apply-job", {
+          method: "POST",
+          body: formData
+        })
+        .then(response => {
+          // Handle both success and error responses
+          return response.json().then(data => ({
+            ok: response.ok,
+            status: response.status,
+            data: data
+          }));
+        })
+        .then(result => {
+          if (result.ok && !result.data.error) {
+            showNotification(result.data.message || "Applied successfully!");
+            resumeModal.style.display = "none";
+            resumeForm.reset();
+          } else {
+            showNotification("Error: " + (result.data.error || result.data.message || "Application failed"), true);
+          }
+        })
+        .catch(error => {
+          console.error("Error applying:", error);
+          showNotification("Failed to apply. Please try again.", true);
+        });
+      };
+    });
+
+    // Logout function
+    function logoutUser(event) {
+      event.preventDefault();
+
+      if (!currentUser) {
+        // Already logged out
+        currentUser = null;
+        localStorage.removeItem("currentUser");
+        window.location.href = "landingpage.html";
+        return;
+      }
+
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id || currentUser.user_id || currentUser })
+      })
+      .then(response => {
+        if (response.ok) {
+          showNotification("Logout successful! Redirecting to home...");
+          sessionStorage.removeItem("user_id");
+          currentUser = null;
+          document.getElementById("logout-menu").style.display = "none";
+          document.getElementById("auth-menu").innerHTML = '<a href="login.html">Login</a>';
+
+          setTimeout(() => {
+            window.location.href = "home.html";
+          }, 1500);
+        } else {
+          showNotification("Logout failed. Try again.", true);
+        }
+      })
+      .catch(error => {
+        console.error("Error logging out:", error);
+        showNotification("Logout failed. Try again.", true);
+      });
+    }
+
+    // Setup event listeners after DOM loaded
+    window.addEventListener("DOMContentLoaded", () => {
+      checkLoginStatus();
+      loadJobs();
+
+      document.getElementById("search-btn").addEventListener("click", searchJobs);
+
+      const logoutLink = document.getElementById("logout-link");
+      if (logoutLink) {
+        logoutLink.addEventListener("click", logoutUser);
+      }
+
+      // AI Feature Event Listeners
+      const scoreBtn = document.getElementById("score-profile-btn");
+      if (scoreBtn) scoreBtn.addEventListener("click", getProfileScore);
+
+      const recommendBtn = document.getElementById("recommend-jobs-btn");
+      if (recommendBtn) recommendBtn.addEventListener("click", getJobRecommendations);
+
+      const similarBtn = document.getElementById("find-similar-jobs-btn");
+      if (similarBtn) similarBtn.addEventListener("click", findSimilarJobs);
+    });
+  </script>
+</body>
+</html>

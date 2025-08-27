@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - SmartJobSearch</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <img src="part-time.png" alt="logo" class="logo-img" />
+            <nav>
+                <ul>
+                    <li><a href="home.html">Home</a></li>
+                    <li><a href="jobpost.html">Post Job</a></li>
+                    <li><a href="account.html">Edit</a></li>
+                    <li><a href="Appliedjobs.html">Applied Jobs</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li id="auth-menu"><a href="login.html" id="auth-link">Login</a></li>
+                    <li id="logout-menu" style="display: none;">
+                        <a href="#" class="nav-link" id="logout-link">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Notification container -->
+    <div id="notification-message" role="alert" aria-live="assertive" aria-atomic="true">
+        <span class="icon">✔️</span>
+        <span class="message-text"></span>
+        <button type="button" class="close-btn" aria-label="Close notification">&times;</button>
+    </div>
+
+    <main>
+        <div class="profile-container">
+            <!-- Profile Header -->
+            <div class="profile-header-card">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar">
+                        <span id="avatarInitials">U</span>
+                    </div>
+                    <div class="profile-basic-info">
+                        <h1 id="displayFullName">Loading...</h1>
+                        <p id="displayEmail">Loading...</p>
+                        <div class="profile-badges">
+                            <span class="badge" id="displayJobTitle">Not specified</span>
+                            <span class="badge experience-badge"><span id="displayYearsExperience">0</span> years</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="edit-profile-btn" onclick="toggleEditMode()" id="editToggleBtn">
+                    <i class="fas fa-edit"></i>
+                    Edit Profile
+                </button>
+            </div>
+
+            <!-- Profile Content -->
+            <div class="profile-content">
+                <!-- View Mode -->
+                <div id="viewMode" class="profile-view">
+                    <div class="info-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-user"></i> Professional Summary</h3>
+                        </div>
+                        <div class="card-content">
+                            <p id="displayBio" class="summary-text">No professional summary added yet.</p>
+                        </div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-code"></i> Skills</h3>
+                            </div>
+                            <div class="card-content">
+                                <div id="displaySkillsContainer" class="skills-container">
+                                    <span class="no-data">No skills added yet</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-map-marker-alt"></i> Location & Preferences</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="preference-item">
+                                    <strong>Location:</strong>
+                                    <span id="displayPreferredLocation">Not specified</span>
+                                </div>
+                                <div class="preference-item">
+                                    <strong>Job Type:</strong>
+                                    <span id="displayPreferredJobType">Any</span>
+                                </div>
+                                <div class="preference-item">
+                                    <strong>Salary:</strong>
+                                    <span id="displaySalaryExpectation">Not specified</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-briefcase"></i> Experience</h3>
+                            </div>
+                            <div class="card-content">
+                                <p id="displayExperience">No experience description added yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Mode -->
+                <div id="editMode" class="profile-edit" style="display: none;">
+                    <form id="userProfileForm" class="clean-form">
+                        <!-- Basic Information Section -->
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-user-edit"></i> Basic Information</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="profileFullName">Full Name *</label>
+                                        <input type="text" id="profileFullName" name="full_name" placeholder="Enter your full name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="profileUsername">Username *</label>
+                                        <input type="text" id="profileUsername" name="username" placeholder="Enter username" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileEmail">Email Address *</label>
+                                    <input type="email" id="profileEmail" name="email" placeholder="Enter your email" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Professional Details Section -->
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-briefcase"></i> Professional Details</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="profileJobTitle">Job Title</label>
+                                        <input type="text" id="profileJobTitle" name="job_title" placeholder="e.g., Software Engineer, Marketing Manager">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="profileYearsExperience">Experience Level</label>
+                                        <select id="profileYearsExperience" name="years_experience">
+                                            <option value="">Select experience level</option>
+                                            <option value="0">Entry Level (0 years)</option>
+                                            <option value="1">1 year</option>
+                                            <option value="2">2 years</option>
+                                            <option value="3">3 years</option>
+                                            <option value="4">4 years</option>
+                                            <option value="5">5 years</option>
+                                            <option value="7">5-10 years</option>
+                                            <option value="12">10-15 years</option>
+                                            <option value="20">15+ years</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileBio">Professional Summary</label>
+                                    <textarea id="profileBio" name="bio" rows="4" placeholder="Brief summary of your professional background and goals..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Skills & Experience Section -->
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-code"></i> Skills & Experience</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-group">
+                                    <label for="profileSkills">Skills & Expertise</label>
+                                    <textarea id="profileSkills" name="skills" rows="3" placeholder="JavaScript, Python, React, SQL, Project Management, Communication..."></textarea>
+                                    <small class="form-hint">
+                                        <i class="fas fa-lightbulb"></i>
+                                        Separate skills with commas for better organization
+                                    </small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileExperience">Experience Description</label>
+                                    <textarea id="profileExperience" name="experience" rows="4" placeholder="Describe your work experience and key achievements..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preferences Section -->
+                        <div class="info-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-cog"></i> Job Preferences</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="profilePreferredLocation">Preferred Location</label>
+                                        <input type="text" id="profilePreferredLocation" name="preferred_location" placeholder="e.g., New York, Remote, San Francisco">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="profilePreferredJobType">Job Type</label>
+                                        <select id="profilePreferredJobType" name="preferred_job_type">
+                                            <option value="">Any</option>
+                                            <option value="Full-time">Full-time</option>
+                                            <option value="Part-time">Part-time</option>
+                                            <option value="Contract">Contract</option>
+                                            <option value="Remote">Remote</option>
+                                            <option value="Freelance">Freelance</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileSalaryExpectation">Salary Expectation</label>
+                                    <input type="text" id="profileSalaryExpectation" name="salary_expectation" placeholder="e.g., $70,000 - $90,000, $50/hour">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-save"></i>
+                                Save Changes
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="cancelEdit()">
+                                <i class="fas fa-times"></i>
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+
+        // Show notification function
+        function showNotification(message, isError = false) {
+            const notif = document.getElementById("notification-message");
+            if (!notif) return;
+
+            const messageText = notif.querySelector(".message-text");
+            const icon = notif.querySelector(".icon");
+            
+            if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+            
+            messageText.textContent = message;
+            icon.textContent = isError ? "❌" : "✔️";
+            notif.classList.toggle("error", isError);
+            notif.classList.add("show");
+            
+            notif.hideTimeout = setTimeout(() => {
+                notif.classList.remove("show");
+            }, 5000);
+        }
+
+        // Check login status and load user info
+        function checkLoginStatus() {
+            const userId = sessionStorage.getItem("user_id");
+            if (!userId) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            fetch(`/api/auth/user-info?userId=${userId}`, {
+                method: "GET"
+            })
+            .then(response => response.json())
+            .then(data => {
+                const authMenu = document.getElementById("auth-menu");
+                const logoutMenu = document.getElementById("logout-menu");
+
+                if (data.user_id) {
+                    currentUser = {
+                        id: data.user_id,
+                        user_id: data.user_id,
+                        full_name: data.full_name,
+                        username: data.username,
+                        email: data.email
+                    };
+                    authMenu.innerHTML = `<a href="profile.html" id="account-link">${data.full_name}</a>`;
+                    logoutMenu.style.display = "inline";
+                    
+                    // Load profile data
+                    loadUserProfile(data);
+                } else {
+                    window.location.href = "login.html";
+                }
+            })
+            .catch(error => {
+                console.error("Error checking login status:", error);
+                showNotification("Failed to load profile. Please try logging in again.", true);
+                setTimeout(() => {
+                    window.location.href = "login.html";
+                }, 2000);
+            });
+        }
+
+        // Load user profile data
+        function loadUserProfile(userData) {
+            try {
+                // Generate initials for avatar
+                const initials = userData.full_name ? userData.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+                document.getElementById('avatarInitials').textContent = initials;
+
+                // Display current profile info in header
+                document.getElementById('displayFullName').textContent = userData.full_name || 'Not specified';
+                document.getElementById('displayEmail').textContent = userData.email || 'Not specified';
+                document.getElementById('displayJobTitle').textContent = userData.job_title || 'Not specified';
+                document.getElementById('displayYearsExperience').textContent = userData.years_experience || '0';
+
+                // Display profile content
+                document.getElementById('displayBio').textContent = userData.bio || 'No professional summary added yet.';
+                document.getElementById('displayPreferredLocation').textContent = userData.preferred_location || 'Not specified';
+                document.getElementById('displayPreferredJobType').textContent = userData.preferred_job_type || 'Any';
+                document.getElementById('displaySalaryExpectation').textContent = userData.salary_expectation || 'Not specified';
+                document.getElementById('displayExperience').textContent = userData.experience || 'No experience description added yet.';
+
+                // Display skills as badges
+                const skillsContainer = document.getElementById('displaySkillsContainer');
+                if (userData.skills && userData.skills.trim()) {
+                    const skills = userData.skills.split(',').map(s => s.trim()).filter(s => s);
+                    skillsContainer.innerHTML = skills.map(skill => 
+                        `<span class="skill-badge">${skill}</span>`
+                    ).join('');
+                } else {
+                    skillsContainer.innerHTML = '<span class="no-data">No skills added yet</span>';
+                }
+
+                // Populate form fields for editing
+                document.getElementById('profileFullName').value = userData.full_name || '';
+                document.getElementById('profileUsername').value = userData.username || '';
+                document.getElementById('profileEmail').value = userData.email || '';
+                document.getElementById('profileJobTitle').value = userData.job_title || '';
+                document.getElementById('profileYearsExperience').value = userData.years_experience || '';
+                document.getElementById('profileSkills').value = userData.skills || '';
+                document.getElementById('profileExperience').value = userData.experience || '';
+                document.getElementById('profilePreferredLocation').value = userData.preferred_location || '';
+                document.getElementById('profilePreferredJobType').value = userData.preferred_job_type || '';
+                document.getElementById('profileSalaryExpectation').value = userData.salary_expectation || '';
+                document.getElementById('profileBio').value = userData.bio || '';
+
+                console.log('Profile loaded successfully:', userData);
+            } catch (error) {
+                console.error('Error loading profile data:', error);
+                showNotification("Error loading profile data", true);
+            }
+        }
+
+        // Toggle between view and edit modes
+        function toggleEditMode() {
+            const viewMode = document.getElementById('viewMode');
+            const editMode = document.getElementById('editMode');
+            const toggleBtn = document.getElementById('editToggleBtn');
+            
+            viewMode.style.display = 'none';
+            editMode.style.display = 'block';
+            toggleBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+            toggleBtn.onclick = cancelEdit;
+        }
+
+        function cancelEdit() {
+            const viewMode = document.getElementById('viewMode');
+            const editMode = document.getElementById('editMode');
+            const toggleBtn = document.getElementById('editToggleBtn');
+            
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+            toggleBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Profile';
+            toggleBtn.onclick = toggleEditMode;
+        }
+
+        // Save user profile
+        async function saveUserProfile(formData) {
+            try {
+                const userId = currentUser.id || currentUser.user_id || currentUser;
+                const profileData = {
+                    userId: userId,
+                    fullName: formData.get('full_name'),
+                    username: formData.get('username'),
+                    email: formData.get('email'),
+                    jobTitle: formData.get('job_title'),
+                    yearsExperience: parseInt(formData.get('years_experience')) || null,
+                    skills: formData.get('skills'),
+                    experience: formData.get('experience'),
+                    preferredLocation: formData.get('preferred_location'),
+                    preferredJobType: formData.get('preferred_job_type'),
+                    salaryExpectation: formData.get('salary_expectation'),
+                    bio: formData.get('bio')
+                };
+
+                showNotification("Saving profile changes...", false);
+
+                const response = await fetch('/api/auth/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(profileData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification("✅ Profile updated successfully!");
+                    
+                    // Update currentUser object and reload profile display
+                    if (data.user) {
+                        currentUser = {
+                            id: data.user.user_id,
+                            user_id: data.user.user_id,
+                            full_name: data.user.full_name,
+                            username: data.user.username,
+                            email: data.user.email
+                        };
+                        
+                        // Reload the profile data and switch back to view mode
+                        loadUserProfile(data.user);
+                        cancelEdit();
+                        
+                        // Update header display
+                        const authMenu = document.getElementById("auth-menu");
+                        authMenu.innerHTML = `<a href="profile.html" id="account-link">${data.user.full_name}</a>`;
+                    }
+                } else {
+                    showNotification("❌ Failed to update profile: " + (data.error || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Error saving profile:', error);
+                showNotification("❌ Error saving profile. Please try again.", true);
+            }
+        }
+
+        // Logout function
+        function logoutUser(event) {
+            event.preventDefault();
+
+            fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: currentUser.id || currentUser.user_id || currentUser })
+            })
+            .then(response => {
+                if (response.ok) {
+                    showNotification("Logout successful! Redirecting to home...");
+                    sessionStorage.removeItem("user_id");
+                    currentUser = null;
+                    
+                    setTimeout(() => {
+                        window.location.href = "home.html";
+                    }, 1500);
+                } else {
+                    showNotification("Logout failed. Try again.", true);
+                }
+            })
+            .catch(error => {
+                console.error("Error logging out:", error);
+                showNotification("Logout failed. Try again.", true);
+            });
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Profile page loaded, checking login status...');
+            checkLoginStatus();
+            
+            // Profile form submission
+            document.getElementById('userProfileForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                saveUserProfile(formData);
+            });
+
+            // Logout functionality
+            const logoutLink = document.getElementById("logout-link");
+            if (logoutLink) {
+                logoutLink.addEventListener("click", logoutUser);
+            }
+
+            // Close notification
+            const closeBtn = document.querySelector("#notification-message .close-btn");
+            if (closeBtn) {
+                closeBtn.addEventListener("click", function() {
+                    const notif = document.getElementById("notification-message");
+                    notif.classList.remove("show");
+                    if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

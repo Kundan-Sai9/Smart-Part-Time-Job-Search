@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Applied Jobs</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- <style>
+        .wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #notification-message {
+            display: none;
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            border-radius: 5px;
+            z-index: 999;
+            transition: opacity 0.5s;
+        }
+
+        #notification-message.show {
+            display: block;
+            opacity: 1;
+        }
+
+        #notification-message.error {
+            background-color: #f44336;
+        }
+
+        .close-btn {
+            color: white;
+            font-size: 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-img {
+            width: 50px;
+        }
+
+        nav ul {
+            display: flex;
+            list-style-type: none;
+        }
+
+        nav ul li {
+            margin: 0 10px;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: #000;
+        }
+    </style> -->
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <img src="part-time.png" alt="logo" class="logo-img">
+            <nav>
+                <ul>
+                    <li><a href="home.html">Home</a></li>
+                    <li><a href="jobpost.html">Post Job</a></li>
+                    <li><a href="account.html">Edit</a></li>
+                    <li><a href="Appliedjobs.html">Applied Jobs</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li id="auth-menu"><a href="login.html" id="auth-link">Login</a></li>
+                    <li id="logout-menu" style="display: none;">
+                        <a href="#" class="nav-link" id="logout-link">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div id="notification-message" role="alert" aria-live="assertive" aria-atomic="true">
+        <span class="icon">✔️</span>
+        <span class="message-text"></span>
+        <button type="button" class="close-btn" aria-label="Close notification">&times;</button>
+    </div>
+
+    <main>
+        <div class="wrapper">
+            <section class="content">
+                <h1>Applied Jobs & Approved Jobs</h1>
+                <p>View the jobs you have applied for.</p>
+            </section>
+            <section class="applied-jobs-section">
+                <h2>Applied Jobs</h2>
+                <ul id="appliedJobsList"></ul>
+            </section>
+            <section class="applied-jobs-section">
+                <h2>Your Approved Jobs</h2>
+                <ul id="appliedJobsListApproved"></ul>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+
+        function checkLoginStatus() {
+            const userId = sessionStorage.getItem("user_id");
+            const authMenu = document.getElementById("auth-menu");
+            const logoutMenu = document.getElementById("logout-menu");
+            if (!userId) {
+                currentUser = null;
+                if (authMenu) authMenu.innerHTML = `<a href="login.html" id="auth-link">Login</a>`;
+                if (logoutMenu) logoutMenu.style.display = "none";
+                window.location.href = "login.html";
+                return;
+            }
+            fetch(`/api/auth/user-info?userId=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.user_id) {
+                        currentUser = data.user_id;
+                        if (authMenu) {
+                            authMenu.innerHTML = `<div><a href="#" id="account-link">${data.full_name}</a></div>`;
+                        }
+                        if (logoutMenu) logoutMenu.style.display = "inline";
+                        fetchAppliedJobs();
+                        fetchApprovedJobs();
+                    } else {
+                        currentUser = null;
+                        if (authMenu) authMenu.innerHTML = `<a href="login.html" id="auth-link">Login</a>`;
+                        if (logoutMenu) logoutMenu.style.display = "none";
+                        window.location.href = "login.html";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking login status:", error);
+                    currentUser = null;
+                    if (authMenu) authMenu.innerHTML = `<a href="login.html" id="auth-link">Login</a>`;
+                    if (logoutMenu) logoutMenu.style.display = "none";
+                    window.location.href = "login.html";
+                });
+        }
+
+        function showNotification(message, isError = false) {
+            const notif = document.getElementById("notification-message");
+            if (!notif) return;
+            if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+            notif.querySelector(".message-text").textContent = message;
+            notif.classList.toggle("error", isError);
+            notif.classList.add("show");
+            notif.querySelector(".icon").textContent = isError ? "❌" : "✔️";
+            notif.hideTimeout = setTimeout(() => {
+                notif.classList.remove("show");
+            }, 3000);
+        }
+
+        function fetchAppliedJobs() {
+            if (!currentUser) {
+                console.log("No user is logged in.");
+                return;
+            }
+            fetch(`/api/auth/applied-jobs?userId=${currentUser}`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    const jobList = document.getElementById("appliedJobsList");
+                    jobList.innerHTML = "";
+                    let jobs = Array.isArray(data.jobs) ? data.jobs : [];
+                    // Hide jobs with status 'Accepted' for the seeker
+                    jobs = jobs.filter(job => (job.status || '').toLowerCase() !== 'accepted');
+                    if (jobs.length > 0) {
+                        showNotification(`${jobs.length} applied jobs found`, false);
+                        jobs.forEach(job => {
+                            const li = document.createElement("li");
+                            li.innerHTML = `
+                                <strong>${job.title}</strong> at <em>${job.company}</em><br>
+                                Location: ${job.location}<br>
+                                Salary: &#8377;${job.salary ? job.salary.toLocaleString() : 'N/A'}<br>
+                                <button onclick="deleteApplication(${job.application_id})" style="color:white; background:red; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Delete</button>
+                            `;
+                            jobList.appendChild(li);
+                        });
+                    } else {
+                        let li = document.createElement("li");
+                        li.innerText = "No jobs applied yet.";
+                        jobList.appendChild(li);
+                        showNotification("No job applications found", false);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching applied jobs:", error);
+                    showNotification("Failed to load applied jobs", true);
+                });
+        }
+
+        function fetchApprovedJobs() {
+            fetch(`/api/auth/approved-jobs?userId=${currentUser}`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    const jobList = document.getElementById("appliedJobsListApproved");
+                    jobList.innerHTML = "";
+                    if (Array.isArray(data) && data.length > 0) {
+                        showNotification(`${data.length} approved jobs found`, false);
+                        data.forEach(job => {
+                            const li = document.createElement("li");
+                            li.innerHTML = `
+                                <strong>${job.title}</strong> at <em>${job.company}</em><br>
+                                Location: ${job.location}<br>
+                                Salary: &#8377;${job.salary.toLocaleString()}
+                            `;
+                            jobList.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement("li");
+                        li.innerText = "You have not been accepted to any approved jobs yet.";
+                        jobList.appendChild(li);
+                        showNotification("No approved jobs found", false);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching approved jobs:", error);
+                    showNotification("Failed to load approved jobs", true);
+                });
+        }
+
+        function deleteApplication(applicationId) {
+            if (confirm("Are you sure you want to delete this application?")) {
+                if (!currentUser || isNaN(currentUser) || !applicationId || isNaN(applicationId)) {
+                    showNotification("User ID and Application ID are required", true);
+                    return;
+                }
+                fetch(`/api/auth/delete-application/${Number(applicationId)}?userId=${Number(currentUser)}`, {
+                    method: "DELETE"
+                })
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success || data.message) {
+                            showNotification("Application deleted successfully", false);
+                            fetchAppliedJobs();
+                        } else {
+                            showNotification("Failed to delete application: " + (data.error || "Unknown error"), true);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error deleting application:", error);
+                        showNotification("Failed to delete application", true);
+                    });
+            }
+        }
+
+        function logout() {
+            fetch("/api/auth/logout", { method: "POST" })
+                .then(response => {
+                    if (response.ok) {
+                        showNotification("Logged out successfully", false);
+                        sessionStorage.clear();
+                        setTimeout(() => {
+                            window.location.href = "home.html";
+                        }, 1500);
+                    } else {
+                        throw new Error("Logout failed");
+                    }
+                })
+                .catch(error => {
+                    console.error("Logout error:", error);
+                    showNotification("Logout failed. Please try again", true);
+                    sessionStorage.clear();
+                    window.location.href = "home.html";
+                });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Logout event
+            var logoutLink = document.getElementById("logout-link");
+            if (logoutLink) {
+                logoutLink.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+            // Notification close button
+            const closeBtn = document.querySelector("#notification-message .close-btn");
+            if (closeBtn) {
+                closeBtn.addEventListener("click", function() {
+                    const notif = document.getElementById("notification-message");
+                    notif.classList.remove("show");
+                    if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+                });
+            }
+            
+            checkLoginStatus();
+        });
+    </script>
+</body>
+</html>

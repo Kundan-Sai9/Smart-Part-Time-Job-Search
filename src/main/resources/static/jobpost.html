@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Post a Job</title>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: black;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #ff5722;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0px 4px 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0 20px;
+    }
+
+    .logo-img {
+      width: 100px;
+      height: auto;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 20px;
+      padding: 0;
+      margin: 0;
+    }
+
+    nav ul li a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1.2rem;
+      transition: color 0.3s;
+    }
+
+    nav ul li a:hover {
+      color: black;
+    }
+
+    .container {
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .form-box {
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      width: 50%;
+      margin: auto;
+      box-shadow: 0px 4px 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .form-box input,
+    .form-box textarea,
+    .form-box button,
+    .form-box select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      background: #333;
+      color: white;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    .form-box select:focus {
+      outline: 2px solid #ff5722;
+      background: #222;
+      color: #ff5722;
+    }
+
+    .form-box button {
+      background: #ff5722;
+      color: black;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .form-box button:hover {
+      background: darkgoldenrod;
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+
+    .logout-btn:hover {
+      color: black;
+    }
+
+    #notification {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 5px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      font-weight: bold;
+      max-width: 400px;
+    }
+
+    #notification.success {
+      background: #4caf50;
+      color: white;
+    }
+
+    #notification.error {
+      background: #f44336;
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      nav ul {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .nav-container {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .form-box {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="nav-container">
+    <img src="part-time.png" alt="logo" class="logo-img">
+    <nav>
+      <ul>
+        <li><a href="home.html">Home</a></li>
+        <li><a href="jobpost.html">Post Job</a></li>
+        <li><a href="account.html">Edit</a></li>
+        <li><a href="Appliedjobs.html">Applied Jobs</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li id="auth-menu"><a href="login.html">Login</a></li>
+        <li id="logout-menu" style="display: none;"><a href="#" onclick="logout()">Logout</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="container">
+    <h1>Post a Job</h1>
+    <div id="job-form-container" class="form-box" style="display: none;">
+      <form id="jobForm">
+        <label for="jobType"><strong>Job Type:</strong></label>
+        <select name="jobType" id="jobType" class="styled-dropdown" required>
+          <option value="">Select Type</option>
+          <option value="Technical">Technical</option>
+          <option value="Non-Technical">Non-Technical</option>
+        </select>
+        <input type="text" name="title" placeholder="Job Title" required>
+        <div id="companyField" style="display:none;">
+          <input type="text" name="company" id="companyInput" placeholder="Company Name" autocomplete="organization">
+        </div>
+        <input type="text" name="location" placeholder="Location" required>
+        <input type="number" name="salary" placeholder="Salary" required>
+        <textarea name="description" placeholder="Job Description" required></textarea>
+
+        <!-- Skills field for Technical jobs -->
+        <div id="skillsField" style="display:none;">
+          <label for="skills"><strong>Required Skills:</strong></label>
+          <textarea name="skills" id="skills" placeholder="List required skills (e.g., JavaScript, Python, React, SQL, Project Management...)" rows="3"></textarea>
+        </div>
+
+        <div id="experienceField" style="display:none;">
+          <label for="experience">Relevant Experience:</label>
+          <textarea name="experience" id="experience" placeholder="Describe relevant experience"></textarea>
+        </div>
+        <button type="submit">Post Job</button>
+      </form>
+    </div>
+    <p id="login-message" style="color: red; display: none;">You must be logged in to post a job.</p>
+  </section>
+</main>
+
+<div id="notification">Job posted successfully!</div>
+
+<script>
+  function showNotification(message, type = 'success') {
+    const box = document.getElementById("notification");
+    box.textContent = message;
+    box.className = type; // 'success' or 'error'
+    box.style.display = "block";
+    setTimeout(() => {
+      box.style.display = "none";
+    }, 4000);
+  }
+
+  function checkLoginStatus() {
+    const userId = sessionStorage.getItem("user_id");
+    if (!userId) {
+      const authMenu = document.getElementById("auth-menu");
+      const logoutMenu = document.getElementById("logout-menu");
+      authMenu.style.display = "inline";
+      logoutMenu.style.display = "none";
+      document.getElementById("job-form-container").style.display = "none";
+      document.getElementById("login-message").style.display = "block";
+      showNotification("Please log in to post a job", "error");
+      return;
+    }
+
+    fetch(`/api/auth/user-info?userId=${userId}`, {
+      method: "GET"
+    })
+    .then(response => response.json())
+    .then(data => {
+      const authMenu = document.getElementById("auth-menu");
+      const logoutMenu = document.getElementById("logout-menu");
+
+      if (data.user_id) {
+        authMenu.style.display = "none";
+        logoutMenu.style.display = "inline";
+        document.getElementById("job-form-container").style.display = "block";
+        document.getElementById("login-message").style.display = "none";
+        showNotification("Welcome! You can now post jobs", "success");
+      } else {
+        document.getElementById("login-message").style.display = "block";
+        showNotification("Authentication failed. Please log in again", "error");
+      }
+    })
+    .catch(error => {
+      console.error("Error checking login status:", error);
+      showNotification("Failed to verify login status", "error");
+    });
+  }
+
+  function logout() {
+    const userId = sessionStorage.getItem("user_id");
+    
+    fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: userId })
+    })
+    .then(response => {
+      if (response.ok) {
+        showNotification("Logged out successfully", "success");
+        sessionStorage.clear();
+        setTimeout(() => {
+          window.location.href = "home.html";
+        }, 1500);
+      } else {
+        throw new Error("Logout failed");
+      }
+    })
+    .catch(error => {
+      console.error("Logout error:", error);
+      showNotification("Logout failed. Please try again", "error");
+      // Still clear session even if server request fails
+      sessionStorage.clear();
+      window.location.href = "home.html";
+    });
+  }
+
+  // Show/hide resume/experience fields based on job type
+    document.getElementById("jobType").addEventListener("change", function() {
+      const type = this.value;
+      const experienceField = document.getElementById("experienceField");
+      const skillsField = document.getElementById("skillsField");
+      const companyField = document.getElementById("companyField");
+      const companyInput = document.getElementById("companyInput");
+      const skillsInput = document.getElementById("skills");
+      
+      // Show experience field for Non-Technical jobs
+      experienceField.style.display = type === "Non-Technical" ? "block" : "none";
+      
+      // Show skills and company fields for Technical jobs
+      if (type === "Technical") {
+        companyField.style.display = "block";
+        skillsField.style.display = "block";
+        companyInput.setAttribute("required", "required");
+        skillsInput.setAttribute("required", "required");
+      } else {
+        companyField.style.display = "none";
+        skillsField.style.display = "none";
+        companyInput.removeAttribute("required");
+        skillsInput.removeAttribute("required");
+        companyInput.value = "";
+        skillsInput.value = "";
+      }
+    });
+
+    document.getElementById("jobForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const userId = sessionStorage.getItem("user_id");
+      if (!userId || isNaN(parseInt(userId))) {
+        showNotification("User ID is required to post a job", "error");
+        return;
+      }
+      // Prepare job data
+      const jobType = formData.get('jobType');
+      let company = "";
+      let skills = "";
+      
+      if (jobType === 'Technical') {
+        company = formData.get('company');
+        skills = formData.get('skills');
+        
+        if (!company) {
+          showNotification("Company Name is required for Technical jobs", "error");
+          return;
+        }
+        if (!skills) {
+          showNotification("Required Skills are required for Technical jobs", "error");
+          return;
+        }
+      }
+      
+      const jobData = {
+        title: formData.get('title'),
+        company: company,
+        location: formData.get('location'),
+        salary: formData.get('salary'),
+        description: formData.get('description'),
+        jobType: jobType,
+        experience: formData.get('experience'),
+        skills: skills,
+        userId: parseInt(userId)
+      };
+      fetch("/api/post-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobData)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data.message && !data.error) {
+          showNotification("Job posted successfully!", "success");
+          form.reset();
+        } else if (data.error) {
+          showNotification(data.error, "error");
+        } else {
+          showNotification("Job posted successfully!", "success");
+          form.reset();
+        }
+      })
+      .catch(error => {
+        console.error("Error posting job:", error);
+        showNotification("Failed to post job. Please try again", "error");
+      });
+    });
+
+  function acceptApplicant(appId, jobId) {
+    if (!confirm("Accept this applicant? This action is final.")) return;
+    const userId = sessionStorage.getItem("user_id");
+    if (!userId || isNaN(parseInt(userId)) || !jobId || isNaN(jobId) || !appId || isNaN(appId)) {
+      showNotification("User ID, Job ID, and Application ID are required", "error");
+      return;
+    }
+    fetch("/api/auth/approve-application", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        applicationId: Number(appId), 
+        jobId: Number(jobId),
+        userId: parseInt(userId)
+      })
+    })
+    .then(response => {
+      if (response.ok) {
+        showNotification("Applicant accepted successfully", "success");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        throw new Error("Failed to accept applicant");
+      }
+    })
+    .catch(error => {
+      console.error("Error accepting applicant:", error);
+      showNotification("Error accepting applicant. Please try again", "error");
+    });
+  }
+
+  checkLoginStatus();
+</script>
+
+</body>
+</html>
+

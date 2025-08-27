@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Account - SmartJobSearch</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <img src="part-time.png" alt="logo" class="logo-img" />
+            <nav>
+                <ul>
+                    <li><a href="home.html">Home</a></li>
+                    <li><a href="jobpost.html">Post Job</a></li>
+                    <li><a href="account.html">Edit</a></li>
+                    <li><a href="Appliedjobs.html">Applied Jobs</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li id="auth-menu"><a href="login.html" id="auth-link">Login</a></li>
+                    <li id="logout-menu" style="display: none;">
+                        <a href="#" class="nav-link" id="logout-link">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Notification container -->
+    <div id="notification-message" role="alert" aria-live="assertive" aria-atomic="true">
+        <span class="icon">✔️</span>
+        <span class="message-text"></span>
+        <button type="button" class="close-btn" aria-label="Close notification">&times;</button>
+    </div>
+
+    <main>
+        <div class="account-container">
+            <!-- Account Header -->
+            <div class="account-header-card">
+                <div class="account-header-content">
+                    <div class="account-avatar">
+                        <span id="accountAvatarInitials">U</span>
+                    </div>
+                    <div class="account-info">
+                        <h1 id="accountDisplayName">Loading...</h1>
+                        <p class="account-email" id="accountEmail">Loading...</p>
+                        <div class="account-badges">
+                            <span class="account-badge">Member</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Information Card -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-user"></i> Profile Information</h2>
+                    <button class="toggle-btn" onclick="toggleEditMode()" id="editToggleBtn">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                </div>
+                
+                <!-- View Mode -->
+                <div id="viewMode" class="profile-view">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Full Name</label>
+                            <span id="fullName">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Username</label>
+                            <span id="username">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Email</label>
+                            <span id="email">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Mode -->
+                <div id="editMode" class="profile-edit" style="display: none;">
+                    <form id="updateForm" class="clean-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="newFullName">Full Name</label>
+                                <input type="text" id="newFullName" placeholder="Enter your full name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newUsername">Username</label>
+                                <input type="text" id="newUsername" placeholder="Enter your username" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newEmail">Email Address</label>
+                            <input type="email" id="newEmail" placeholder="Enter your email" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="cancelEdit()">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Posted Jobs Card -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-briefcase"></i> My Posted Jobs</h2>
+                    <span class="job-count" id="jobCount">0 Jobs</span>
+                </div>
+                <div id="postedJobsContainer" class="jobs-container">
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading your posted jobs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- Professional UI Functions ---
+        function toggleEditMode() {
+            const viewMode = document.getElementById('viewMode');
+            const editMode = document.getElementById('editMode');
+            const toggleBtn = document.getElementById('editToggleBtn');
+            
+            if (editMode.style.display === 'none') {
+                // Switch to edit mode
+                viewMode.style.display = 'none';
+                editMode.style.display = 'block';
+                toggleBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+                toggleBtn.onclick = cancelEdit;
+                
+                // Pre-fill form with current values
+                document.getElementById('newFullName').value = document.getElementById('fullName').textContent;
+                document.getElementById('newUsername').value = document.getElementById('username').textContent;
+                document.getElementById('newEmail').value = document.getElementById('email').textContent;
+            }
+        }
+        
+        function cancelEdit() {
+            const viewMode = document.getElementById('viewMode');
+            const editMode = document.getElementById('editMode');
+            const toggleBtn = document.getElementById('editToggleBtn');
+            
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+            toggleBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Profile';
+            toggleBtn.onclick = toggleEditMode;
+            
+            // Reset form
+            document.getElementById('updateForm').reset();
+        }
+        
+        function updateAccountHeader(userData) {
+            // Update avatar initials
+            const initials = userData.full_name 
+                ? userData.full_name.split(' ').map(n => n[0]).join('').toUpperCase() 
+                : 'U';
+            document.getElementById('accountAvatarInitials').textContent = initials;
+            
+            // Update header info
+            document.getElementById('accountDisplayName').textContent = userData.full_name || 'User';
+            document.getElementById('accountEmail').textContent = userData.email || '';
+        }
+
+        // --- Edit Job Functions ---
+        let currentUser = null;
+        function showEditJobForm(jobId) {
+            document.getElementById(`edit-job-form-${jobId}`).style.display = "block";
+        }
+        function hideEditJobForm(jobId) {
+            document.getElementById(`edit-job-form-${jobId}`).style.display = "none";
+        }
+        function submitEditJob(event, jobId) {
+            event.preventDefault();
+            const form = event.target;
+            const updatedJob = {
+                title: form.title.value,
+                company: form.company.value,
+                location: form.location.value,
+                salary: form.salary.value,
+                description: form.description.value
+            };
+            fetch(`/api/jobs/${jobId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedJob)
+            })
+            .then(async response => {
+                if (response.ok) {
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch {
+                        data = {};
+                    }
+                    showNotification((data && data.message) || "Job updated successfully!");
+                    hideEditJobForm(jobId);
+                    fetchPostedJobs();
+                } else {
+                    let errorMsg = "Failed to update job.";
+                    try {
+                        const errData = await response.json();
+                        errorMsg = errData.error || errorMsg;
+                    } catch {}
+                    showNotification(errorMsg, true);
+                }
+            })
+            .catch(error => {
+                showNotification("Network error updating job.", true);
+            });
+        }
+        window.showEditJobForm = showEditJobForm;
+        window.hideEditJobForm = hideEditJobForm;
+        window.submitEditJob = submitEditJob;
+
+        function showNotification(message, isError = false) {
+            const notif = document.getElementById("notification-message");
+            if (!notif) return;
+            const messageText = notif.querySelector(".message-text");
+            const icon = notif.querySelector(".icon");
+            if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+            messageText.textContent = message;
+            icon.textContent = isError ? "❌" : "✔️";
+            notif.classList.toggle("error", isError);
+            notif.classList.add("show");
+            notif.hideTimeout = setTimeout(() => {
+                notif.classList.remove("show");
+            }, 5000);
+        }
+
+        function logout() {
+            fetch("/api/auth/logout", { method: "POST" })
+                .then(response => {
+                    if (response.ok) {
+                        showNotification("Logged out successfully", false);
+                        sessionStorage.clear();
+                        setTimeout(() => {
+                            window.location.href = "home.html";
+                        }, 1500);
+                    } else {
+                        throw new Error("Logout failed");
+                    }
+                })
+                .catch(error => {
+                    console.error("Logout error:", error);
+                    showNotification("Logout failed. Please try again", true);
+                    sessionStorage.clear();
+                    window.location.href = "home.html";
+                });
+        }
+
+        function checkLoginStatus() {
+            let userId = sessionStorage.getItem("user_id");
+            if (!userId || isNaN(Number(userId))) {
+                window.location.href = "login.html";
+                return;
+            }
+            currentUser = Number(userId);
+            fetch(`/api/auth/user-info?userId=${currentUser}`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.user_id) {
+                        currentUser = Number(data.user_id);
+                        sessionStorage.setItem("user_id", String(data.user_id));
+                        
+                        // Update professional interface
+                        document.getElementById("fullName").innerText = data.full_name || 'Not specified';
+                        document.getElementById("username").innerText = data.username || 'Not specified';
+                        document.getElementById("email").innerText = data.email || 'Not specified';
+                        
+                        // Update account header
+                        updateAccountHeader(data);
+                        
+                        document.getElementById("auth-menu").style.display = "none";
+                        document.getElementById("logout-menu").style.display = "inline";
+                        showNotification(`Welcome back, ${data.full_name}!`, false);
+                        fetchPostedJobs();
+                    } else {
+                        showNotification("Session expired. Please log in again", true);
+                        setTimeout(() => {
+                            window.location.href = "login.html";
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking login status:", error);
+                    showNotification("Failed to verify login status", true);
+                    setTimeout(() => {
+                        window.location.href = "login.html";
+                    }, 2000);
+                });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Add logout functionality to logout link
+            var logoutLink = document.getElementById("logout-link");
+            if (logoutLink) {
+                logoutLink.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+            // Notification close button
+            const closeBtn = document.querySelector("#notification-message .close-btn");
+            if (closeBtn) {
+                closeBtn.addEventListener("click", function() {
+                    const notif = document.getElementById("notification-message");
+                    notif.classList.remove("show");
+                    if (notif.hideTimeout) clearTimeout(notif.hideTimeout);
+                });
+            }
+            // Profile update form
+            document.getElementById("updateForm").addEventListener("submit", function(e) {
+                e.preventDefault();
+                const updateData = {
+                    userId: currentUser,
+                    fullName: document.getElementById("newFullName").value,
+                    username: document.getElementById("newUsername").value,
+                    email: document.getElementById("newEmail").value
+                };
+                fetch("/api/auth/profile", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updateData)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showNotification(data.message || data.error, !!data.error);
+                    if (!data.error) {
+                        // Refresh the displayed profile info
+                        checkLoginStatus();
+                        document.getElementById("updateForm").reset();
+                    }
+                })
+                .catch(error => {
+                    console.error("Profile update error:", error);
+                    showNotification("Failed to update profile.", true);
+                });
+            });
+            // AI Feature Buttons
+            var scoreBtn = document.getElementById("score-profile-btn");
+            if (scoreBtn) scoreBtn.addEventListener("click", getProfileScore);
+            var recommendBtn = document.getElementById("recommend-jobs-btn");
+            if (recommendBtn) recommendBtn.addEventListener("click", getJobRecommendations);
+            var similarBtn = document.getElementById("find-similar-jobs-btn");
+            if (similarBtn) similarBtn.addEventListener("click", findSimilarJobs);
+            // Initialize the page
+            checkLoginStatus();
+        });
+
+        function fetchPostedJobs() {
+            if (!currentUser || isNaN(Number(currentUser))) return;
+            fetch(`/api/jobs/user/${currentUser}`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    const container = document.getElementById("postedJobsContainer");
+                    const jobCountElement = document.getElementById("jobCount");
+                    
+                    if (Array.isArray(data) && data.length > 0) {
+                        jobCountElement.textContent = `${data.length} Job${data.length > 1 ? 's' : ''}`;
+                        showNotification(`${data.length} posted jobs loaded`, false);
+                        
+                        let jobsHtml = '';
+                        data.forEach((job) => {
+                            jobsHtml += `
+                                <div class="job-card" id="job-card-${job.id}">
+                                    <div class="job-card-header">
+                                        <div class="job-title-section">
+                                            <h3 class="job-title">${job.title}</h3>
+                                            <p class="job-company">${job.company}</p>
+                                        </div>
+                                        <div class="job-actions">
+                                            <button onclick="showEditJobForm(${job.id})" class="btn-edit" title="Edit Job">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button onclick="deleteJob(${job.id})" class="btn-delete" title="Delete Job">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="job-details">
+                                        <div class="job-info-row">
+                                            <span class="job-info-item">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                ${job.location}
+                                            </span>
+                                            <span class="job-info-item">
+                                                <i class="fas fa-dollar-sign"></i>
+                                                $${job.salary}
+                                            </span>
+                                            <span class="job-info-item">
+                                                <i class="fas fa-hashtag"></i>
+                                                ID: ${job.id}
+                                            </span>
+                                        </div>
+                                        <div class="job-description">
+                                            <p>${job.description}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Edit Form (Hidden by default) -->
+                                    <div id="edit-job-form-${job.id}" class="job-edit-form" style="display:none;">
+                                        <form onsubmit="submitEditJob(event, ${job.id})" class="clean-form">
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <label>Job Title</label>
+                                                    <input type="text" name="title" value="${job.title}" placeholder="Job Title" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Company</label>
+                                                    <input type="text" name="company" value="${job.company}" placeholder="Company Name" required>
+                                                </div>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <label>Location</label>
+                                                    <input type="text" name="location" value="${job.location}" placeholder="Location" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Salary</label>
+                                                    <input type="number" name="salary" value="${job.salary}" placeholder="Salary" required>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Job Description</label>
+                                                <textarea name="description" placeholder="Job Description" required rows="4">${job.description}</textarea>
+                                            </div>
+                                            <div class="form-actions">
+                                                <button type="submit" class="btn-primary">
+                                                    <i class="fas fa-save"></i> Save Changes
+                                                </button>
+                                                <button type="button" onclick="hideEditJobForm(${job.id})" class="btn-secondary">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = jobsHtml;
+                    } else {
+                        jobCountElement.textContent = '0 Jobs';
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-briefcase empty-icon"></i>
+                                <h3>No Jobs Posted Yet</h3>
+                                <p>You haven't posted any jobs yet. Start by creating your first job posting!</p>
+                                <a href="jobpost.html" class="btn-primary">
+                                    <i class="fas fa-plus"></i> Post Your First Job
+                                </a>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching posted jobs:", error);
+                    showNotification("Failed to load posted jobs.", true);
+                    document.getElementById("jobCount").textContent = 'Error';
+                });
+        }
+
+        function deleteJob(jobId) {
+            if (confirm("Are you sure you want to delete this job?")) {
+                fetch(`/api/jobs/${jobId}`, {
+                    method: "DELETE"
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showNotification("Job deleted successfully!");
+                        fetchPostedJobs(); // Refresh the list
+                    } else {
+                        showNotification("Failed to delete job.", true);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error deleting job:", error);
+                    showNotification("Error deleting job.", true);
+                });
+            }
+        }
+
+        // --- AI Feature JS ---
+        function getProfileScore() {
+            if (typeof currentUser === 'undefined' || !currentUser) {
+                showNotification("Please login to check your profile score.", true);
+                return;
+            }
+            fetch('/api/profile/score?userId=' + currentUser)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    document.getElementById("profile-score-result").textContent = data.score ? ('Your profile score: ' + data.score) : "Unable to fetch score.";
+                })
+                .catch(function() {
+                    document.getElementById("profile-score-result").textContent = "Error fetching profile score.";
+                });
+        }
+
+        function getJobRecommendations() {
+            if (typeof currentUser === 'undefined' || !currentUser) {
+                showNotification("Please login to get recommendations.", true);
+                return;
+            }
+            fetch('/api/jobs/recommend?userId=' + currentUser)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    var resultDiv = document.getElementById("job-recommendations-result");
+                    if (Array.isArray(data) && data.length > 0) {
+                        var html = '<ul>' + data.map(function(job) { return '<li>' + job.title + ' at ' + job.company + '</li>'; }).join('') + '</ul>';
+                        resultDiv.innerHTML = html;
+                    } else {
+                        resultDiv.textContent = "No recommendations found.";
+                    }
+                })
+                .catch(function() {
+                    document.getElementById("job-recommendations-result").textContent = "Error fetching recommendations.";
+                });
+        }
+
+        function findSimilarJobs() {
+            var jobTitle = document.getElementById("similar-job-input").value.trim();
+            if (!jobTitle) {
+                showNotification("Enter a job title to find similar jobs.", true);
+                return;
+            }
+            fetch('/api/jobs/similar?title=' + encodeURIComponent(jobTitle))
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    var resultDiv = document.getElementById("similar-jobs-result");
+                    if (Array.isArray(data) && data.length > 0) {
+                        var html = '<ul>' + data.map(function(job) { return '<li>' + job.title + ' at ' + job.company + '</li>'; }).join('') + '</ul>';
+                        resultDiv.innerHTML = html;
+                    } else {
+                        resultDiv.textContent = "No similar jobs found.";
+                    }
+                })
+                .catch(function() {
+                    document.getElementById("similar-jobs-result").textContent = "Error fetching similar jobs.";
+                });
+        }
+    </script>
+</body>
+</html>
