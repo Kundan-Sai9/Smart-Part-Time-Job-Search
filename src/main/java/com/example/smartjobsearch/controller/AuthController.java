@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.io.File;
 import java.io.IOException;
 
@@ -25,12 +26,14 @@ public class AuthController {
     private final UserService userService;
     private final AppliedJobService appliedJobService;
     private final JobService jobService;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public AuthController(UserService userService, AppliedJobService appliedJobService, JobService jobService) {
+    public AuthController(UserService userService, AppliedJobService appliedJobService, JobService jobService, PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.appliedJobService = appliedJobService;
         this.jobService = jobService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/signup")
@@ -61,8 +64,8 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Email already exists"));
             }
             
-            // Create new user (password should be hashed in production)
-            User user = new User(request.fullName, request.username, request.email, request.password);
+            String encodedPassword = passwordEncoder.encode(request.password);
+            User user = new User(request.fullName, request.username, request.email, encodedPassword);
             User savedUser = userService.saveUser(user);
             
             return ResponseEntity.ok().body(Map.of(
@@ -97,8 +100,18 @@ public class AuthController {
             
             User user = userOpt.get();
             
-            // Check password (should use proper hashing in production)
-            if (!user.getPassword().equals(request.password)) {
+            // Support both hashed and legacy plaintext passwords.
+            boolean passwordOk = false;
+            try {
+                passwordOk = passwordEncoder.matches(request.password, user.getPassword());
+            } catch (Exception ignored) {
+                passwordOk = false;
+            }
+            if (!passwordOk && user.getPassword() != null && user.getPassword().equals(request.password)) {
+                passwordOk = true;
+            }
+
+            if (!passwordOk) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid password"));
             }
             
@@ -554,44 +567,25 @@ public class AuthController {
 
     // DTO classes for request bodies
     public static class SignupRequest {
-        public String fullName;
-        public String username;
-        public String email;
-        public String password;
-        public String confirmPassword;
+        public String fullName,username,email, password, confirmPassword;
     }
     
     public static class LoginRequest {
-        public String userInput; // username or email
-        public String password;
+        public String userInput,password;
     }
     
     public static class UpdateProfileRequest {
         public Long userId;
-        public String fullName;
-        public String username;
-        public String email;
-        // Profile fields for AI recommendations
-        public String skills;
-        public String experience;
-        public String preferredLocation;
-        public String salaryExpectation;
-        public String bio;
-        public String preferredJobType;
-        // Additional fields for history-based recommendations
-        public String jobTitle;
+        public String fullName, username,email, skills, experience, preferredLocation,salaryExpectation,bio,preferredJobType;
         public Integer yearsExperience;
-        public String industries;
-        public String certifications;
+        public String industries,certifications,jobTitle;
     }
     
     public static class ApplyJobRequest {
-        public Long userId;
-        public Long jobId;
+        public Long userId,jobId;
     }
     
     public static class ApproveApplicationRequest {
-        public Long applicationId;
-        public Long jobId;
+        public Long applicationId,jobId;
     }
 }

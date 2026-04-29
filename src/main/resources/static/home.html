@@ -29,7 +29,7 @@
 
   <!-- Notification container -->
   <div id="notification-message" role="alert" aria-live="assertive" aria-atomic="true">
-    <span class="icon">✔️</span>
+    <span class="icon"></span>
     <span class="message-text"></span>
     <button type="button" class="close-btn" aria-label="Close notification">&times;</button>
   </div>
@@ -74,11 +74,7 @@
         </div>
         
       </div>
-      
-      <div style="text-align: center; margin-top: 30px; padding: 20px; background: rgba(255, 87, 34, 0.1); border-radius: 10px;">
-        <p style="color: #ff5722; margin: 0;"><strong> Powered by Cohere AI</strong></p>
-        <p style="color: #ccc; margin: 5px 0 0 0; font-size: 0.9rem;">Advanced language models provide intelligent insights for your job search</p>
-      </div>
+       
     </section>
 
     <!-- Resume Upload Modal -->
@@ -206,50 +202,27 @@
         }));
         
         // Call Cohere AI for intelligent job matching
-        const aiResponse = await fetch('/api/ai/job-recommendations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userProfile: userProfileText,
-            jobs: jobsForAI,
-            userId: currentUser.id || currentUser.user_id
-          })
-        });
+        // Call backend recommendations endpoint which routes to ML service
+  const recResponse = await fetch(`/api/jobs/ai/recommendations?userId=${currentUser.id || currentUser.user_id}&limit=3`);
+        if (!recResponse.ok) throw new Error(`Recommendation endpoint failed: ${recResponse.status}`);
+        const aiResult = await recResponse.json();
         
-        if (!aiResponse.ok) {
-          throw new Error('AI recommendation service failed');
-        }
-        
-        const aiResult = await aiResponse.json();
-        console.log("Cohere AI Response:", aiResult);
-        console.log("Jobs sent to AI:", jobsForAI.length);
-        console.log("AI returned recommendations:", aiResult.recommendations ? aiResult.recommendations.length : 0);
+  console.log("ML service result:", aiResult);
         
         // Process AI recommendations
         let topRecommendations = [];
         if (aiResult.recommendations && aiResult.recommendations.length > 0) {
-          // Debug: print all available job IDs and all aiRec.jobId values
-          console.log('Available Job IDs:', availableJobs.map(j => j.id));
-          console.log('AI Recommendation jobIds:', aiResult.recommendations.map(r => r.jobId));
-          console.log('AI Recommendation scores:', aiResult.recommendations.map(r => r.matchScore));
-          topRecommendations = aiResult.recommendations.map(aiRec => {
-            const job = availableJobs.find(j => Number(j.id) === Number(aiRec.jobId));
-            if (!job) {
-              console.log(`Warning: AI returned jobId ${aiRec.jobId} but no matching job found in availableJobs`);
-            }
-            return {
-              job: job,
-              score: aiRec.matchScore,
-              matchReasons: aiRec.reasons || []
-            };
-          }).filter(rec => rec.job); // Filter out jobs that weren't found
+          // Map backend recommendations to available jobs
+          topRecommendations = aiResult.recommendations.map(rec => {
+            // backend returns job fields directly, find in availableJobs by id
+            const job = availableJobs.find(j => Number(j.id) === Number(rec.id) || Number(j.id) === Number(rec.job_id));
+            return { job: job || rec, score: rec.match_score || rec.score || 0, matchReasons: rec.match_reasons || rec.matchReasons || [] };
+          }).filter(rec => rec.job);
           console.log("Mapped recommendations (after filtering):", topRecommendations.length);
         } else {
           // Fallback to basic matching if AI fails
           console.log("AI failed, using fallback matching");
-          topRecommendations = availableJobs.slice(0, 5).map(job => ({
+          topRecommendations = availableJobs.slice(0, 3).map(job => ({
             job: job,
             score: 50,
             matchReasons: ['AI analysis temporarily unavailable - showing recent jobs']
@@ -333,9 +306,6 @@
                     <button onclick="window.location.href='profile.html'" style="background: #ff5722; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
                       Update Profile
                     </button>
-                    <button onclick="loadJobs()" style="background: transparent; color: #ff5722; border: 1px solid #ff5722; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
-                      Browse All Jobs
-                    </button>
                   </div>
                 </div>
               </div>
@@ -348,14 +318,11 @@
               <div style="background: rgba(255, 87, 34, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <p style="color: #ff5722; margin: 0 0 8px 0; font-weight: bold;"> Analysis Complete</p>
                 <p style="color: #ccc; margin: 0 0 10px 0; font-size: 0.9rem;">No strong matches found based on your current profile.</p>
-                <p style="color: #ccc; margin: 0; font-size: 0.85rem;">💡 Add more skills to your profile for better recommendations!</p>
+                <p style="color: #ccc; margin: 0; font-size: 0.85rem;">Add more skills to your profile for better recommendations!</p>
               </div>
-              <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                 <button onclick="window.location.href='profile.html'" style="background: #ff5722; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
                   Update Profile
-                </button>
-                <button onclick="loadJobs()" style="background: transparent; color: #ff5722; border: 1px solid #ff5722; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
-                  View All Jobs
                 </button>
               </div>
             </div>

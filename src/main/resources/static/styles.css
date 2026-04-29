@@ -285,6 +285,105 @@ input {
   border-radius: 5px;
 }
 
+/* Improved select / dropdown styling for profile and job post forms */
+select,
+.styled-dropdown {
+  background: #111; /* slightly lighter than page background */
+  color: white;
+  border: 1px solid rgba(255, 215, 0, 0.6); /* gold-ish */
+  padding: 10px 36px 10px 12px; /* leave room for custom arrow */
+  margin: 10px;
+  width: 90%;
+  max-width: 100%;
+  border-radius: 6px;
+  appearance: none; /* remove native arrow */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, white 50%),
+                    linear-gradient(135deg, white 50%, transparent 50%),
+                    linear-gradient(to right, rgba(255,215,0,0.06), rgba(255,215,0,0.06));
+  background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px), 100% 0;
+  background-size: 6px 6px, 6px 6px, 1px 100%;
+  background-repeat: no-repeat;
+}
+
+select:focus, .styled-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255,87,34,0.12);
+  border-color: #ff5722;
+}
+
+/* Specific tweak for profile preferred job type to align with form layout */
+#profilePreferredJobType {
+  width: calc(50% - 20px);
+  min-width: 160px;
+}
+
+/* Ensure jobpost's styled-dropdown keeps a fixed, readable width */
+.styled-dropdown {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Layout helpers for form rows so selects sit nicely beside inputs */
+.form-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.form-row .form-group {
+  flex: 1 1 0;
+}
+
+/* Ensure selects fill their column and don't overflow */
+.form-group select,
+.form-group .styled-dropdown,
+select {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+/* Dark-themed options for native dropdowns (browser support varies) */
+select option {
+  background: #111; /* dark option background */
+  color: white;
+  padding: 6px 8px;
+}
+
+/* Stronger styling for selected / active option to use project accent color */
+select option:checked,
+select option:active,
+select option[selected] {
+  background-color: #ff5722 !important; /* project accent */
+  color: #ffffff !important;
+}
+
+/* Force select control background and contrast so the closed control is visible */
+select {
+  background-color: #111 !important;
+  color: #fff !important;
+  border-color: rgba(255,215,0,0.6) !important;
+}
+
+/* For Chrome/Edge on Windows the dropdown popup may use native UI and ignore some styles.
+   These rules improve the closed control contrast; for full control consider a custom-styled dropdown component. */
+
+/* Vendor tweaks to hide native expand in IE/Edge and improve focus behavior */
+select::-ms-expand {
+  display: none;
+}
+select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 white;
+}
+
+/* Prevent the select dropdown from appearing off-layout in some browsers by ensuring it inherits transform context */
+select, .form-group select {
+  transform: translateZ(0);
+}
+
 button {
   background: gold;
   color: black;
@@ -512,6 +611,30 @@ label.show-password-label {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* Unified badge style used in profile header for job title and experience */
+.profile-badge {
+  background: linear-gradient(135deg, #ff5722, #ff7043);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-block;
+  margin: 4px;
+  box-shadow: 0 2px 4px rgba(255, 87, 34, 0.3);
+}
+
+/* Highlighted state for important profile badges (accessible, with smooth transition) */
+.profile-badge.highlight {
+  /* Orange highlight: clear orange tone for emphasis */
+  background: linear-gradient(135deg, #ffb74d, #ff9800);
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(255, 152, 0, 0.35);
+  transform: translateY(-3px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 220ms ease, box-shadow 220ms ease, transform 220ms ease;
 }
 
 .badge {
@@ -879,6 +1002,19 @@ body {
 .profile-avatar {
   background: linear-gradient(135deg, #ff5722, #ff7043);
   box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+}
+
+/* Make header badges (job title, years) match the skills orange style */
+.profile-badges .skill-badge {
+  background: linear-gradient(135deg, #ff5722, #ff7043);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-block;
+  margin: 4px;
+  box-shadow: 0 2px 4px rgba(255, 87, 34, 0.3);
 }
 
 /* Info grid spacing */

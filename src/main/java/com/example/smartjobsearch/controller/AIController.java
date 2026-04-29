@@ -24,11 +24,33 @@ public class AIController {
     public ResponseEntity<?> getJobRecommendations(@RequestBody Map<String, Object> request) {
         try {
             String userProfile = (String) request.get("userProfile");
+            @SuppressWarnings({"unchecked", "unused"})
             List<Map<String, Object>> jobs = (List<Map<String, Object>>) request.get("jobs");
-            Long userId = Long.valueOf(request.get("userId").toString());
+            @SuppressWarnings("unused")
+            Long userId = request.get("userId") != null ? Long.valueOf(request.get("userId").toString()) : null;
             
             System.out.println("AI Job Recommendations - User Profile: " + userProfile);
             System.out.println("AI Job Recommendations - Jobs count: " + jobs.size());
+
+            // Prefer ML service LangChain endpoint for structured recommendations
+            try {
+                String mlBase = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:8000");
+                String mlUrl = mlBase.endsWith("/") ? mlBase + "llm/job-recommendations" : mlBase + "/llm/job-recommendations";
+
+                Map<String, Object> mlPayload = new HashMap<>();
+                mlPayload.put("user_profile", userProfile != null ? userProfile : "");
+                mlPayload.put("jobs", jobs != null ? jobs : Collections.emptyList());
+                mlPayload.put("top_k", 5);
+
+                RestTemplate mlRest = new RestTemplate();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mlResponse = mlRest.postForObject(mlUrl, mlPayload, Map.class);
+                if (mlResponse != null && mlResponse.containsKey("recommendations")) {
+                    return ResponseEntity.ok(mlResponse);
+                }
+            } catch (Exception ex) {
+                System.out.println("ML LangChain endpoint unavailable, using legacy fallback: " + ex.getMessage());
+            }
             
             // Prepare prompt for Cohere AI
             StringBuilder prompt = new StringBuilder();
@@ -121,9 +143,11 @@ public class AIController {
         
         // Make API call
         String cohereUrl = "https://api.cohere.ai/v1/generate";
+        @SuppressWarnings("unchecked")
         Map<String, Object> cohereResponse = restTemplate.postForObject(cohereUrl, entity, Map.class);
         
         if (cohereResponse != null && cohereResponse.containsKey("generations")) {
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> generations = (List<Map<String, Object>>) cohereResponse.get("generations");
             if (!generations.isEmpty()) {
                 return (String) generations.get(0).get("text");
@@ -147,9 +171,9 @@ public class AIController {
                 
                 // Clean up common JSON formatting issues
                 jsonStr = jsonStr
-                    .replaceAll(",\\s*]", "]")  // Remove trailing commas before closing bracket
-                    .replaceAll(",\\s*}", "}")  // Remove trailing commas before closing brace
-                    .replaceAll("\\s+", " ")    // Normalize whitespace
+                    .replaceAll(",\\s*]", "]") 
+                    .replaceAll(",\\s*}", "}") 
+                    .replaceAll("\\s+", " ") 
                     .trim();
                 
                 try {

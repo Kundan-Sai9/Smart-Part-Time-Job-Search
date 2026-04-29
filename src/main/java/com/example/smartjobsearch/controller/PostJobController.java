@@ -1,6 +1,4 @@
 package com.example.smartjobsearch.controller;
-
-
 import com.example.smartjobsearch.model.Job;
 import com.example.smartjobsearch.service.JobService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +18,6 @@ public class PostJobController {
     public PostJobController(JobService jobService) {
         this.jobService = jobService;
     }
-
 
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<?> postJobMultipart(
@@ -81,14 +78,8 @@ public class PostJobController {
     }
 
     public static class PostJobRequest {
-        public String title;
-        public String description;
-        public String company;
-        public String location;
-        public String salary;
+        public String title,description,company,location,salary;
         public Long userId;
-        public String jobType;
-        public String experience;
-        public String skills;
+        public String jobType,experience,skills;
     }
 }

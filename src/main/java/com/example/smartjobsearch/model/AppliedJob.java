@@ -8,15 +8,17 @@ public class AppliedJob {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private Long userId;
     private Long jobId;
+
     private String jobTitle;
     private String company;
-    private String status; // e.g., Pending, Accepted, Rejected
+    private String status;
     private LocalDateTime appliedAt;
-    private String resumePath; // Path to uploaded resume file
+    private String resumePath;
 
-    // Getters and setters
+    
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }

@@ -1,7 +1,5 @@
 package com.example.smartjobsearch.model;
 
-import java.sql.Blob;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,17 +10,17 @@ public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private Long postedBy;
+
     private String title;
     private String description;
     private String company;
     private String location;
     private String salary;
-    private Long postedBy;
-    private String jobType; // "Technical" or "Non-Technical"
-    private String resumePath; // For technical jobs (optional)
-    private String experience; // For non-technical jobs (optional)
-    private String skills; // Required skills for technical jobs (optional)
-    private Blob resumeBlob; // For storing resume as a Blob (optional)
+    private String jobType;
+    private String resumePath;
+    private String experience;
+    private String skills;
 
     // Constructors
     public Job() {}
@@ -40,7 +38,6 @@ public class Job {
         this.skills = skills;
     }
 
-    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getTitle() { return title; }

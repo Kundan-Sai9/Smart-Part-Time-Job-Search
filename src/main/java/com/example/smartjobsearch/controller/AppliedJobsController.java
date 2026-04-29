@@ -23,5 +23,5 @@ public class AppliedJobsController {
         return ResponseEntity.ok(applications);
     }
 
-    // You can add more endpoints for applying to jobs, etc.
+
 }

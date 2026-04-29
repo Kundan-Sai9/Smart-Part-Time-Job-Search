@@ -7,21 +7,15 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String fullName;
-    private String username;
-    private String email;
-    private String password;
+    private String fullName,username,email,password;
     
     // Profile fields for AI recommendations
     @Column(columnDefinition = "TEXT")
-    private String skills; // Comma-separated skills
+    private String skills; 
     @Column(columnDefinition = "TEXT")
-    private String experience; // Experience level and description
-    private String preferredLocation;
-    private String salaryExpectation;
+    private String experience,preferredLocation,salaryExpectation;
     @Column(columnDefinition = "TEXT")
-    private String bio; // Professional bio/summary
-    private String preferredJobType; // Full-time, Part-time, Contract, etc.
+    private String bio,preferredJobType;
     
     // Fields for history-based recommendations
     private String jobTitle; // Current or desired job title

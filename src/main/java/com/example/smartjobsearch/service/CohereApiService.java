@@ -1,46 +1,85 @@
+
 package com.example.smartjobsearch.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import java.util.*;
 import java.util.Collections;
 
 @Service
+@SuppressWarnings("unused")
 public class CohereApiService {
     @Value("${cohere.api.key}")
     private String apiKey;
 
     private static final String API_URL = "https://api.cohere.ai/v1/embed";
+    @Value("${cohere.embedding.model:embed-english-v2.0}")
+    private String embeddingModel;
+
+    @SuppressWarnings("unused")
+    private static final String UNUSED_NOTE = "API_URL kept for future real integration";
 
     public List<Double> getEmbedding(String text) {
-        // For now, let's create a simple mock embedding based on text characteristics
-        // This allows the feature to work while we debug the API issue
-        return generateMockEmbedding(text);
-        
-        /* TODO: Uncomment when API key is working
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apiKey);
-        headers.set("Content-Type", "application/json");
-        headers.set("Cohere-Version", "2022-12-06");
-        
-        Map<String, Object> body = new HashMap<>();
-        body.put("texts", Collections.singletonList(text));
-        body.put("model", "embed-english-v2.0");
-        
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        
-        try {
-            Map response = restTemplate.postForObject(API_URL, entity, Map.class);
-            List<List<Double>> embeddings = (List<List<Double>>) response.get("embeddings");
-            return embeddings.get(0);
-        } catch (Exception e) {
-            System.err.println("Cohere API Error: " + e.getMessage());
+        // If API key is not configured, fall back to deterministic mock embedding
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            System.out.println("Cohere API key missing; using mock embedding");
             return generateMockEmbedding(text);
         }
-        */
+
+        try {
+            org.springframework.web.client.RestTemplate rest = new org.springframework.web.client.RestTemplate();
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            // Cohere expects a list of texts
+            payload.put("model", embeddingModel);
+            payload.put("texts", java.util.Collections.singletonList(text));
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "Bearer " + apiKey);
+            headers.set("Content-Type", "application/json");
+
+            org.springframework.http.HttpEntity<java.util.Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(payload, headers);
+
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> resp = rest.postForObject(API_URL, entity, java.util.Map.class);
+
+            if (resp == null) {
+                throw new RuntimeException("Empty response from Cohere embed API");
+            }
+
+            Object embeddingsObj = resp.get("embeddings");
+            if (embeddingsObj instanceof java.util.List) {
+                java.util.List<?> embList = (java.util.List<?>) embeddingsObj;
+                if (!embList.isEmpty()) {
+                    Object first = embList.get(0);
+                    java.util.List<Number> vector = null;
+                    if (first instanceof java.util.List) {
+                        // shape: { "embeddings": [[0.1, 0.2, ...]] }
+                        vector = (java.util.List<Number>) first;
+                    } else if (first instanceof java.util.Map) {
+                        // shape: { "embeddings": [ { "embedding": [...] } ] }
+                        Object inner = ((java.util.Map<?,?>) first).get("embedding");
+                        if (inner instanceof java.util.List) {
+                            vector = (java.util.List<Number>) inner;
+                        }
+                    }
+
+                    if (vector != null) {
+                        java.util.List<Double> out = new java.util.ArrayList<>(vector.size());
+                        for (Number n : vector) out.add(n.doubleValue());
+                        return out;
+                    }
+                }
+            }
+
+            // If response shape unexpected, fall back to mock
+            System.err.println("Unexpected embedding response format from Cohere; falling back to mock");
+            return generateMockEmbedding(text);
+
+        } catch (Exception e) {
+            System.err.println("Cohere embed call failed: " + e.getMessage());
+            e.printStackTrace();
+            return generateMockEmbedding(text);
+        }
     }
     
     private List<Double> generateMockEmbedding(String text) {
@@ -115,30 +154,6 @@ public class CohereApiService {
         // For now, provide rule-based suggestions until we can fix the API
         return generateMockSuggestion(prompt);
         
-        /* TODO: Uncomment when API key is working properly
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apiKey);
-        headers.set("Content-Type", "application/json");
-        headers.set("Cohere-Version", "2022-12-06");
-        
-        Map<String, Object> body = new HashMap<>();
-        body.put("prompt", prompt);
-        body.put("model", "command");
-        body.put("max_tokens", 100);
-        body.put("temperature", 0.7);
-        
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        
-        try {
-            Map response = restTemplate.postForObject("https://api.cohere.ai/v1/generate", entity, Map.class);
-            List<Map<String, Object>> generations = (List<Map<String, Object>>) response.get("generations");
-            return (String) generations.get(0).get("text");
-        } catch (Exception e) {
-            System.err.println("Cohere Text Generation Error: " + e.getMessage());
-            return generateMockSuggestion(prompt);
-        }
-        */
     }
     
     private String generateMockSuggestion(String prompt) {
@@ -160,7 +175,6 @@ public class CohereApiService {
         boolean hasName = lowerPrompt.contains("name:") && !lowerPrompt.contains("name: not provided");
         boolean hasBio = lowerPrompt.contains("bio:") && !lowerPrompt.contains("bio: not provided");
         boolean hasSkills = lowerPrompt.contains("skills:") && !lowerPrompt.contains("skills: not provided");
-        boolean hasExperience = lowerPrompt.contains("experience:") && !lowerPrompt.contains("experience: not provided");
         boolean hasJobType = lowerPrompt.contains("preferred job type:") && !lowerPrompt.contains("preferred job type: not provided");
         boolean hasLocation = lowerPrompt.contains("preferred location:") && !lowerPrompt.contains("preferred location: not provided");
         

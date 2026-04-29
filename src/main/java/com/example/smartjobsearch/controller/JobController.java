@@ -4,13 +4,10 @@ package com.example.smartjobsearch.controller;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.Comparator;
 import com.example.smartjobsearch.service.UserService;
 import com.example.smartjobsearch.model.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.smartjobsearch.model.Job;
 import com.example.smartjobsearch.service.JobService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +73,71 @@ public class JobController {
     // Create or update job
     @PostMapping
     public Job createOrUpdateJob(@RequestBody Job job) {
-        return jobService.saveJob(job);
+        Job saved = jobService.saveJob(job);
+
+        // Try to notify the ML service so it can update its corpus dynamically.
+        // This is best-effort and should not break job creation if ML is unavailable.
+        try {
+            String mlUrl = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:8000");
+            // If env var points to a specific endpoint like /recommend, strip path
+            if (mlUrl.endsWith("/recommend")) {
+                mlUrl = mlUrl.substring(0, mlUrl.length() - "/recommend".length());
+            }
+            String uploadUrl = mlUrl.endsWith("/") ? mlUrl + "upload_jobs" : mlUrl + "/upload_jobs";
+
+            org.springframework.web.client.RestTemplate rt = new org.springframework.web.client.RestTemplate();
+            java.util.Map<String, Object> jobMap = new java.util.HashMap<>();
+            jobMap.put("Job Title", saved.getTitle() != null ? saved.getTitle() : "");
+            jobMap.put("Company", saved.getCompany() != null ? saved.getCompany() : "");
+            jobMap.put("Location", saved.getLocation() != null ? saved.getLocation() : "");
+            jobMap.put("Experience Level", saved.getExperience() != null ? saved.getExperience() : "");
+            jobMap.put("Salary", saved.getSalary() != null ? saved.getSalary() : "");
+            jobMap.put("Industry", "");
+            jobMap.put("Required Skills", saved.getSkills() != null ? saved.getSkills() : "");
+            jobMap.put("job_id", saved.getId() != null ? saved.getId() : 0);
+
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("jobs", java.util.Arrays.asList(jobMap));
+            payload.put("train_reranker", false);
+
+            // Fire-and-forget: do not block user flow on ML availability. Log any error.
+            try {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> resp = rt.postForObject(uploadUrl, payload, java.util.Map.class);
+                System.out.println("ML upload_jobs response: " + (resp != null ? resp.toString() : "null"));
+            } catch (Exception ex) {
+                System.out.println("Warning: failed to notify ML service of new job: " + ex.getMessage());
+            }
+
+            // Spawn a background retrain task to update the reranker asynchronously.
+            try {
+                final String uploadUrlFinal = uploadUrl;
+                final java.util.Map<String, Object> retrainPayload = new java.util.HashMap<>();
+                retrainPayload.put("jobs", java.util.Arrays.asList(jobMap));
+                retrainPayload.put("train_reranker", true);
+
+                Thread retrainThread = new Thread(() -> {
+                    try {
+                        // Slight delay to allow ML to finish any in-flight upload
+                        Thread.sleep(1000);
+                        org.springframework.web.client.RestTemplate rt2 = new org.springframework.web.client.RestTemplate();
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> r = rt2.postForObject(uploadUrlFinal, retrainPayload, java.util.Map.class);
+                        System.out.println("ML async retrain response: " + (r != null ? r.toString() : "null"));
+                    } catch (Exception ex) {
+                        System.out.println("Warning: async retrain failed: " + ex.getMessage());
+                    }
+                });
+                retrainThread.setDaemon(true);
+                retrainThread.start();
+            } catch (Exception e) {
+                System.out.println("Non-fatal: failed to start async retrain thread: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            System.out.println("Non-fatal: error while preparing ML notification: " + e.getMessage());
+        }
+
+        return saved;
     }
 
     // Delete job
@@ -89,7 +150,7 @@ public class JobController {
     // AI-powered personalized job recommendations
     @GetMapping("/ai/recommendations")
     public ResponseEntity<?> getPersonalizedJobRecommendations(@RequestParam Long userId, 
-                                                              @RequestParam(defaultValue = "5") int limit) {
+                                                              @RequestParam(defaultValue = "3") int limit) {
         try {
             // Validate user
             Optional<User> userOpt = userService.findById(userId);
@@ -111,8 +172,11 @@ public class JobController {
                 System.out.println("DEBUG - Job: " + rec.getJob().getTitle() + ", Score: " + rec.getScore())
             );
             
-            // Format response
+            // Format response and respect requested limit
+            double profileCompletenessFraction = Math.max(0.0, Math.min(1.0, result.getProfileCompleteness() / 100.0));
+
             List<Map<String, Object>> formattedRecommendations = result.getRecommendations().stream()
+                .limit(limit)
                 .map(rec -> {
                     Job job = rec.getJob();
                     Map<String, Object> jobData = new HashMap<>();
@@ -122,8 +186,27 @@ public class JobController {
                     jobData.put("location", job.getLocation());
                     jobData.put("salary", job.getSalary());
                     jobData.put("description", job.getDescription());
-                    jobData.put("match_score", Math.round(rec.getScore() * 100));
-                    jobData.put("match_reasons", rec.getReasons());
+
+                    // Adjust score using profile completeness to make match % more accurate and stable
+                    double rawScore = rec.getScore();
+                    if (Double.isNaN(rawScore) || Double.isInfinite(rawScore)) rawScore = 0.0;
+                    // Blend: 85% recommender score, 15% profile completeness (tunable)
+                    double blended = rawScore * 0.85 + profileCompletenessFraction * 0.15;
+                    // Clamp to [0,1]
+                    double safe = Math.max(0.0, Math.min(1.0, blended));
+                    int percent = (int) Math.round(safe * 100.0);
+                    // If recommender or profile gives a non-zero signal, show a small visible floor
+                    if (percent == 0 && (rawScore > 0.0 || profileCompletenessFraction > 0.0)) {
+                        percent = 5; // minimal visible percent to avoid misleading 0%
+                    }
+                    jobData.put("match_score", percent);
+
+                    // Build match reasons and include profile completeness note
+                    java.util.List<String> reasons = new java.util.ArrayList<>();
+                    if (rec.getReasons() != null) reasons.addAll(rec.getReasons());
+                    reasons.add("Profile completeness: " + Math.round(profileCompletenessFraction * 100) + "%");
+                    jobData.put("match_reasons", reasons);
+
                     return jobData;
                 })
                 .collect(Collectors.toList());

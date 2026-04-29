@@ -46,8 +46,8 @@
                         <h1 id="displayFullName">Loading...</h1>
                         <p id="displayEmail">Loading...</p>
                         <div class="profile-badges">
-                            <span class="badge" id="displayJobTitle">Not specified</span>
-                            <span class="badge experience-badge"><span id="displayYearsExperience">0</span> years</span>
+                            <span class="skill-badge" id="displayJobTitle">Not specified</span>
+                            <span class="skill-badge"><span id="displayYearsExperience">0</span> years</span>
                         </div>
                     </div>
                 </div>
@@ -318,8 +318,26 @@
                 // Display current profile info in header
                 document.getElementById('displayFullName').textContent = userData.full_name || 'Not specified';
                 document.getElementById('displayEmail').textContent = userData.email || 'Not specified';
-                document.getElementById('displayJobTitle').textContent = userData.job_title || 'Not specified';
-                document.getElementById('displayYearsExperience').textContent = userData.years_experience || '0';
+                // Job title and years are shown as header badges. Use elements and toggle a highlight class when the user is a Student with 2 years.
+                const jobTitleElem = document.getElementById('displayJobTitle');
+                const yearsElem = document.getElementById('displayYearsExperience');
+                jobTitleElem.textContent = userData.job_title || 'Not specified';
+                yearsElem.textContent = userData.years_experience || '0';
+
+                try {
+                    const jobTitleVal = (userData.job_title || '').toString().trim().toLowerCase();
+                    const yearsVal = parseInt(userData.years_experience, 10) || 0;
+                    const yearsBadge = yearsElem && yearsElem.parentElement ? yearsElem.parentElement : null;
+                    if (jobTitleVal === 'student' && yearsVal === 2) {
+                        jobTitleElem.classList.add('highlight');
+                        if (yearsBadge) yearsBadge.classList.add('highlight');
+                    } else {
+                        jobTitleElem.classList.remove('highlight');
+                        if (yearsBadge) yearsBadge.classList.remove('highlight');
+                    }
+                } catch (e) {
+                    console.error('Error toggling profile highlight:', e);
+                }
 
                 // Display profile content
                 document.getElementById('displayBio').textContent = userData.bio || 'No professional summary added yet.';
