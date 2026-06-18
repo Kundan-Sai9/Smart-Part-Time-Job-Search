@@ -27,17 +27,26 @@ public class AuthController {
     private final AppliedJobService appliedJobService;
     private final JobService jobService;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.smartjobsearch.security.JwtService jwtService;
+
 
     @Autowired
-    public AuthController(UserService userService, AppliedJobService appliedJobService, JobService jobService, PasswordEncoder passwordEncoder) {
+    public AuthController(UserService userService,
+                           AppliedJobService appliedJobService,
+                           JobService jobService,
+                           PasswordEncoder passwordEncoder,
+                           com.example.smartjobsearch.security.JwtService jwtService) {
         this.userService = userService;
         this.appliedJobService = appliedJobService;
         this.jobService = jobService;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
+
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
+
         try {
             // Validate input
             if (request.fullName == null || request.fullName.trim().isEmpty()) {
@@ -68,9 +77,13 @@ public class AuthController {
             User user = new User(request.fullName, request.username, request.email, encodedPassword);
             User savedUser = userService.saveUser(user);
             
+            String token = jwtService.generateAccessToken(savedUser.getId(), savedUser.getUsername());
+
             return ResponseEntity.ok().body(Map.of(
                 "message", "User registered successfully",
-                "user_id", savedUser.getId()
+                "user_id", savedUser.getId(),
+                "access_token", token,
+                "token_type", "Bearer"
             ));
             
         } catch (Exception e) {
@@ -115,12 +128,16 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid password"));
             }
             
+            String token = jwtService.generateAccessToken(user.getId(), user.getUsername());
+
             return ResponseEntity.ok().body(Map.of(
                 "message", "Login successful",
                 "user_id", user.getId(),
                 "full_name", user.getFullName(),
                 "username", user.getUsername(),
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "access_token", token,
+                "token_type", "Bearer"
             ));
             
         } catch (Exception e) {

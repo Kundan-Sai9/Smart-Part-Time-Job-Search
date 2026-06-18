@@ -48,36 +48,36 @@ public class FileController {
 
     @GetMapping("/login")
     public String login() {
-        return "redirect:/login.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/dashboard")
     public String dashboard() {
-        return "redirect:/dashboard.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/account")
     public String account() {
-        return "redirect:/account.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/jobpost")
     public String jobPost() {
-        return "redirect:/jobpost.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/appliedjobs")
     public String appliedJobs() {
-        return "redirect:/Appliedjobs.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/all_applications")
     public String allApplications() {
-        return "redirect:/all_applications.html";
+        return "forward:/index.html";
     }
 
     @GetMapping("/home")
     public String homePage() {
-        return "redirect:/home.html";
+        return "forward:/index.html";
     }
 }
