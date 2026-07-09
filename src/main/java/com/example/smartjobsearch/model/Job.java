@@ -5,7 +5,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 @Entity
+@Data
+@NoArgsConstructor
 public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,9 +26,7 @@ public class Job {
     private String resumePath;
     private String experience;
     private String skills;
-
-    // Constructors
-    public Job() {}
+    private String status = "OPEN"; // Default to OPEN
 
     public Job(String title, String description, String company, String location, String salary, Long postedBy, String jobType, String resumePath, String experience, String skills) {
         this.title = title;
@@ -37,27 +40,4 @@ public class Job {
         this.experience = experience;
         this.skills = skills;
     }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public String getCompany() { return company; }
-    public void setCompany(String company) { this.company = company; }
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
-    public String getSalary() { return salary; }
-    public void setSalary(String salary) { this.salary = salary; }
-    public Long getPostedBy() { return postedBy; }
-    public void setPostedBy(Long postedBy) { this.postedBy = postedBy; }
-    public String getJobType() { return jobType; }
-    public void setJobType(String jobType) { this.jobType = jobType; }
-    public String getResumePath() { return resumePath; }
-    public void setResumePath(String resumePath) { this.resumePath = resumePath; }
-    public String getExperience() { return experience; }
-    public void setExperience(String experience) { this.experience = experience; }
-    public String getSkills() { return skills; }
-    public void setSkills(String skills) { this.skills = skills; }
 }

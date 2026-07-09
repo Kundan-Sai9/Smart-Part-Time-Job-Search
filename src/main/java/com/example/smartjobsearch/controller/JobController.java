@@ -43,16 +43,16 @@ public class JobController {
     @Autowired
     private com.example.smartjobsearch.service.JobRecommendationService jobRecommendationService;
 
-    // Get all jobs or search
     @GetMapping
     public List<Job> getAllJobs(@RequestParam(value = "search", required = false) String search) {
         System.out.println("DEBUG JobController - getAllJobs called with search: " + search);
         if (search != null && !search.trim().isEmpty()) {
             List<Job> searchResults = jobService.searchJobs(search);
+            searchResults = searchResults.stream().filter(j -> !"CLOSED".equals(j.getStatus())).collect(Collectors.toList());
             System.out.println("DEBUG JobController - Search returned " + searchResults.size() + " jobs");
             return searchResults;
         }
-        List<Job> allJobs = jobService.getAllJobs();
+        List<Job> allJobs = jobService.getAllJobs().stream().filter(j -> !"CLOSED".equals(j.getStatus())).collect(Collectors.toList());
         System.out.println("DEBUG JobController - getAllJobs returned " + allJobs.size() + " jobs");
         return allJobs;
     }

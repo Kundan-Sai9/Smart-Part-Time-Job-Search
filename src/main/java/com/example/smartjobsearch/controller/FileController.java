@@ -46,38 +46,5 @@ public class FileController {
                 .body(resource);
     }
 
-    @GetMapping("/login")
-    public String login() {
-        return "forward:/index.html";
-    }
 
-    @GetMapping("/dashboard")
-    public String dashboard() {
-        return "forward:/index.html";
-    }
-
-    @GetMapping("/account")
-    public String account() {
-        return "forward:/index.html";
-    }
-
-    @GetMapping("/jobpost")
-    public String jobPost() {
-        return "forward:/index.html";
-    }
-
-    @GetMapping("/appliedjobs")
-    public String appliedJobs() {
-        return "forward:/index.html";
-    }
-
-    @GetMapping("/all_applications")
-    public String allApplications() {
-        return "forward:/index.html";
-    }
-
-    @GetMapping("/home")
-    public String homePage() {
-        return "forward:/index.html";
-    }
 }

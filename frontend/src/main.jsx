@@ -5,9 +5,11 @@ import {
   CheckCircle2,
   ClipboardList,
   LogOut,
+  Moon,
   Search,
   Send,
   Sparkles,
+  Sun,
   User,
   UserRound,
 } from "lucide-react";
@@ -16,22 +18,58 @@ import partTimeLogo from "./part-time.png";
 
 const api = {
   async get(path) {
-    const response = await fetch(path);
+    const response = await fetch(path, {
+      headers: buildAuthHeaders(path),
+    });
     return parseResponse(response);
   },
+
   async json(path, body, method = "POST") {
     const response = await fetch(path, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...buildAuthHeaders(path),
+      },
       body: JSON.stringify(body),
     });
     return parseResponse(response);
   },
+
   async form(path, formData) {
-    const response = await fetch(path, { method: "POST", body: formData });
+    const response = await fetch(path, {
+      method: "POST",
+      headers: buildAuthHeaders(path),
+      body: formData,
+    });
+    return parseResponse(response);
+  },
+
+  async delete(path) {
+    const response = await fetch(path, {
+      method: "DELETE",
+      headers: buildAuthHeaders(path),
+    });
     return parseResponse(response);
   },
 };
+
+function buildAuthHeaders(path) {
+  try {
+    // Only protect /api/** except /api/auth/**
+    if (typeof path !== "string") return {};
+    const isApi = path.startsWith("/api/");
+    const isAuthApi = path.startsWith("/api/auth/");
+    if (!isApi || isAuthApi) return {};
+
+    const token = sessionStorage.getItem("access_token");
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
+
 
 async function parseResponse(response) {
   const text = await response.text();
@@ -47,11 +85,27 @@ function getStoredUserId() {
   return value && !Number.isNaN(Number(value)) ? Number(value) : null;
 }
 
+function getStoredAccessToken() {
+  return sessionStorage.getItem("access_token");
+}
+
 function App() {
   const [userId, setUserId] = useState(getStoredUserId);
+  const [accessToken, setAccessToken] = useState(getStoredAccessToken);
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+
   const [user, setUser] = useState(null);
   const [page, setPage] = useState(() => window.location.pathname.replace("/", "") || "home");
   const [notice, setNotice] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme(t => t === "dark" ? "light" : "dark");
+  }
 
   useEffect(() => {
     const onPop = () => setPage(window.location.pathname.replace("/", "") || "home");
@@ -65,7 +119,7 @@ function App() {
       return;
     }
     api
-      .get(`/api/auth/user-info?userId=${userId}`)
+      .get(`/api/profile/user-info?userId=${userId}`)
       .then(setUser)
       .catch(() => {
         sessionStorage.removeItem("user_id");
@@ -85,11 +139,13 @@ function App() {
 
   function login(userData) {
     sessionStorage.setItem("user_id", userData.user_id);
+    if (userData.access_token) sessionStorage.setItem("access_token", userData.access_token);
     setUserId(Number(userData.user_id));
     go("home");
   }
 
   function logout() {
+    sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("user_id");
     setUserId(null);
     setUser(null);
@@ -102,7 +158,7 @@ function App() {
 
   return (
     <>
-      <Header page={currentPage} user={user} go={go} logout={logout} />
+      <Header page={currentPage} user={user} go={go} logout={logout} theme={theme} toggleTheme={toggleTheme} />
       {notice && <Toast notice={notice} />}
       <main>
         {currentPage === "login" && <LoginPage {...context} />}
@@ -118,7 +174,7 @@ function App() {
   );
 }
 
-function Header({ page, user, go, logout }) {
+function Header({ page, user, go, logout, theme, toggleTheme }) {
   const items = [
     ["home", "Jobs"],
     ["post-job", "Post Job"],
@@ -139,17 +195,22 @@ function Header({ page, user, go, logout }) {
           </button>
         ))}
       </nav>
-      {user ? (
-        <button className="user-chip" onClick={logout} title="Logout">
-          <UserRound size={18} />
-          <span>{user.username || user.full_name}</span>
-          <LogOut size={16} />
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <button className="user-chip" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} style={{ padding: '0.5rem' }}>
+          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-      ) : (
-        <button className="primary small" onClick={() => go("login")}>
-          Login
-        </button>
-      )}
+        {user ? (
+          <button className="user-chip" onClick={logout} title="Logout">
+            <UserRound size={18} />
+            <span>{user.username || user.full_name}</span>
+            <LogOut size={16} />
+          </button>
+        ) : (
+          <button className="primary small" onClick={() => go("login")}>
+            Login
+          </button>
+        )}
+      </div>
     </header>
   );
 }
@@ -258,7 +319,7 @@ function HomePage({ userId, user, notify, go }) {
     form.append("jobId", jobId);
     if (resume) form.append("resume", resume);
     try {
-      const data = await api.form("/api/auth/apply-job", form);
+      const data = await api.form("/api/applied-jobs/apply", form);
       notify(data.message || "Application submitted.");
       setResumeJobId(null);
       setResume(null);
@@ -308,7 +369,7 @@ function HomePage({ userId, user, notify, go }) {
           <Search size={18} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search jobs by title or description" />
         </div>
-        <button onClick={() => loadJobs(query)}>Search</button>
+        <button className="primary" onClick={() => loadJobs(query)}>Search</button>
       </section>
 
       <section className="ai-grid">
@@ -405,13 +466,15 @@ function PostJobPage({ userId, notify, go }) {
     event.preventDefault();
     if (!userId) return go("login");
     try {
-      await api.json("/api/post-job", { ...form, userId: Number(userId) });
+      await api.json("/api/jobs", { ...form, postedBy: Number(userId) });
       notify("Job posted successfully.");
       go("dashboard");
     } catch (error) {
       notify(error.message, "error");
     }
   }
+
+  if (!userId) return <EmptyLogin go={go} />;
 
   return (
     <FormShell title="Post a Job" icon={<Send size={24} />}>
@@ -450,12 +513,14 @@ function ProfilePage({ userId, user, notify, go }) {
     event.preventDefault();
     if (!userId) return go("login");
     try {
-      await api.json("/api/auth/profile", { ...form, userId: Number(userId) }, "PUT");
+      await api.json("/api/profile/", { ...form, userId: Number(userId) }, "PUT");
       notify("Profile updated.");
     } catch (error) {
       notify(error.message, "error");
     }
   }
+
+  if (!userId) return <EmptyLogin go={go} />;
 
   return (
     <FormShell title="Profile" icon={<User size={24} />}>
@@ -479,17 +544,32 @@ function AppliedJobsPage({ userId, notify, go }) {
   const [jobs, setJobs] = useState([]);
   const [approved, setApproved] = useState([]);
 
+  async function loadJobs() {
+    api.get(`/api/applied-jobs?userId=${userId}`).then((data) => setJobs(data.jobs || [])).catch((e) => notify(e.message, "error"));
+    api.get(`/api/applied-jobs/approved?userId=${userId}`).then(setApproved).catch(() => {});
+  }
+
   useEffect(() => {
     if (!userId) return;
-    api.get(`/api/auth/applied-jobs?userId=${userId}`).then((data) => setJobs(data.jobs || [])).catch((e) => notify(e.message, "error"));
-    api.get(`/api/auth/approved-jobs?userId=${userId}`).then(setApproved).catch(() => {});
+    loadJobs();
   }, [userId]);
+
+  async function withdraw(applicationId) {
+    if(!window.confirm("Are you sure you want to withdraw this application?")) return;
+    try {
+      await api.delete(`/api/applied-jobs/${applicationId}?userId=${userId}`);
+      notify("Application withdrawn.");
+      loadJobs();
+    } catch(error) {
+      notify(error.message, "error");
+    }
+  }
 
   if (!userId) return <EmptyLogin go={go} />;
 
   return (
     <section className="split-layout">
-      <ListPanel title="Applications" icon={<ClipboardList size={22} />} items={jobs} />
+      <ListPanel title="Applications" icon={<ClipboardList size={22} />} items={jobs} onWithdraw={withdraw} />
       <ListPanel title="Approved Jobs" icon={<CheckCircle2 size={22} />} items={approved} />
     </section>
   );
@@ -497,17 +577,51 @@ function AppliedJobsPage({ userId, notify, go }) {
 
 function DashboardPage({ userId, notify, go }) {
   const [jobs, setJobs] = useState([]);
+  const [editingJob, setEditingJob] = useState(null);
+
+  async function loadJobs() {
+    api.get(`/api/applied-jobs/posted-applications?userId=${userId}`).then(setJobs).catch((e) => notify(e.message, "error"));
+  }
 
   useEffect(() => {
     if (!userId) return;
-    api.get(`/api/auth/posted-applications?userId=${userId}`).then(setJobs).catch((e) => notify(e.message, "error"));
+    loadJobs();
   }, [userId]);
 
   async function approve(applicationId, jobId) {
     try {
-      await api.json("/api/auth/approve-application", { applicationId, jobId, userId });
+      await api.json("/api/applied-jobs/approve", { applicationId, jobId, userId });
       notify("Application approved.");
-      setJobs(await api.get(`/api/auth/posted-applications?userId=${userId}`));
+      loadJobs();
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  }
+
+  async function reject(applicationId, jobId) {
+    if(!window.confirm("Are you sure you want to reject this applicant?")) return;
+    try {
+      await api.json("/api/applied-jobs/reject", { applicationId, jobId, userId });
+      notify("Application rejected.");
+      loadJobs();
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  }
+
+  async function updateJob(event) {
+    event.preventDefault();
+    try {
+      await api.json(`/api/jobs/${editingJob.job_id}`, {
+        title: editingJob.job_title,
+        description: editingJob.description,
+        company: editingJob.company,
+        location: editingJob.location,
+        salary: editingJob.salary,
+      }, "PUT");
+      notify("Job updated.");
+      setEditingJob(null);
+      loadJobs();
     } catch (error) {
       notify(error.message, "error");
     }
@@ -523,25 +637,51 @@ function DashboardPage({ userId, notify, go }) {
       </div>
       {jobs.map((job) => (
         <article className="panel" key={job.job_id}>
-          <h2>{job.job_title}</h2>
-          <p>{job.company} · {job.location}</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2>{job.job_title}</h2>
+              <p>{job.company} · {job.location}</p>
+            </div>
+            <button className="small" onClick={() => setEditingJob(job)}>Edit Job</button>
+          </div>
           <div className="table-list">
             {(job.applicants || []).map((app) => (
               <div key={app.application_id}>
                 <span>{app.username}</span>
                 <span>{app.status}</span>
                 <a href={`/api/files/resume/${app.application_id}`} target="_blank" rel="noreferrer">Resume</a>
-                {app.status === "Pending" && <button onClick={() => approve(app.application_id, job.job_id)}>Approve</button>}
+                {app.status === "Pending" && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="small" onClick={() => approve(app.application_id, job.job_id)}>Approve</button>
+                    <button className="small outline" onClick={() => reject(app.application_id, job.job_id)}>Reject</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </article>
       ))}
+      {editingJob && (
+        <div className="modal-backdrop">
+          <form className="panel modal" onSubmit={updateJob}>
+            <h2>Edit Job</h2>
+            <input value={editingJob.job_title || ""} onChange={(e) => setEditingJob({...editingJob, job_title: e.target.value})} placeholder="Job Title" required />
+            <input value={editingJob.company || ""} onChange={(e) => setEditingJob({...editingJob, company: e.target.value})} placeholder="Company" required />
+            <input value={editingJob.location || ""} onChange={(e) => setEditingJob({...editingJob, location: e.target.value})} placeholder="Location" required />
+            <input value={editingJob.salary || ""} onChange={(e) => setEditingJob({...editingJob, salary: e.target.value})} placeholder="Salary" required />
+            <textarea value={editingJob.description || ""} onChange={(e) => setEditingJob({...editingJob, description: e.target.value})} placeholder="Description" required />
+            <div className="modal-actions">
+              <button type="button" onClick={() => setEditingJob(null)}>Cancel</button>
+              <button className="primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      )}
     </section>
   );
 }
 
-function ListPanel({ title, icon, items }) {
+function ListPanel({ title, icon, items, onWithdraw }) {
   return (
     <article className="panel">
       <div className="panel-title">
@@ -552,9 +692,18 @@ function ListPanel({ title, icon, items }) {
         {items.length === 0 && <p className="muted">Nothing here yet.</p>}
         {items.map((item, index) => (
           <div className="list-card" key={item.application_id || `${item.title}-${index}`}>
-            <strong>{item.title || item.job_title}</strong>
-            <span>{item.company} · {item.location || "Location unavailable"}</span>
-            <small>{item.status || item.salary || ""}</small>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <strong style={{ fontSize: '1.1em' }}>{item.title || item.job_title}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                <span>{item.company}</span>
+                <span style={{ opacity: 0.5 }}>•</span>
+                <span>{item.location || "Location unavailable"}</span>
+              </div>
+              <small style={{ color: 'var(--primary)', fontWeight: '600' }}>{item.status || item.salary || ""}</small>
+            </div>
+            {onWithdraw && item.status === "Pending" && (
+              <button className="small" onClick={() => onWithdraw(item.application_id)}>Withdraw</button>
+            )}
           </div>
         ))}
       </div>
@@ -586,3 +735,4 @@ function EmptyLogin({ go }) {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+

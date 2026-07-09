@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: smartjobsearch-db
+    environment:
+      MYSQL_DATABASE: job
+      MYSQL_ROOT_PASSWORD: '2005'
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartjobsearch-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/job?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: '2005'
+      ML_RECOMMENDER_URL: http://ml-service:5000
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smartjobsearch-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  ml-service:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: smartjobsearch-ml
+    ports:
+      - "5000:5000"
+
+volumes:
+  db_data:

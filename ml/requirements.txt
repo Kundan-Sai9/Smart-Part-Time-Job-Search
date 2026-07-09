@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 pandas
 numpy
 scikit-learn
@@ -12,3 +13,4 @@ langchain-core
 langchain-community
 langchain-cohere
 langchain-huggingface
+pyarrow

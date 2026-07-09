@@ -149,9 +149,11 @@ main {
 .hero-panel {
   display: flex;
   flex-direction: column;
-  justify-content: end;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   gap: 0.7rem;
-  padding: 1.5rem;
+  padding: 2.5rem 1.5rem;
   color: #ffb088;
 }
 
@@ -170,7 +172,7 @@ main {
 .toolbar {
   display: flex;
   gap: 0.75rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .searchbox {
@@ -294,6 +296,8 @@ main {
 .empty-state {
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 1.5rem;
   min-height: calc(100vh - 150px);
 }
 
@@ -427,3 +431,26 @@ a {
     grid-template-columns: 1fr;
   }
 }
+/* Light Theme Overrides */
+:root[data-theme='light'] { color-scheme: light; background: #ffffff; color: #1a1a1a; }
+:root[data-theme='light'] body { background: #f0f4f8; }
+:root[data-theme='light'] .topbar { background: rgba(255, 255, 255, 0.9); border-bottom: 1px solid rgba(0, 0, 0, 0.1); }
+:root[data-theme='light'] button { background: rgba(0, 0, 0, 0.05); color: #334155; }
+:root[data-theme='light'] button:hover { background: rgba(0, 0, 0, 0.08); }
+:root[data-theme='light'] nav button, :root[data-theme='light'] .brand, :root[data-theme='light'] .user-chip { background: transparent; }
+:root[data-theme='light'] .user-chip:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme='light'] .primary { background: #2563eb; color: #ffffff; }
+:root[data-theme='light'] .primary:hover { background: #1d4ed8; }
+:root[data-theme='light'] .hero-panel, :root[data-theme='light'] .panel, :root[data-theme='light'] .job-card { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+:root[data-theme='light'] .hero-panel { color: #2563eb; } :root[data-theme='light'] .hero-panel strong { color: #1a1a1a; }
+:root[data-theme='light'] .eyebrow, :root[data-theme='light'] a, :root[data-theme='light'] .job-card h3 { color: #2563eb; }
+:root[data-theme='light'] nav button { color: #475569; } :root[data-theme='light'] nav button.active, :root[data-theme='light'] nav button:hover { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+:root[data-theme='light'] .hero p, :root[data-theme='light'] .muted { color: #64748b; }
+:root[data-theme='light'] .job-meta span, :root[data-theme='light'] .job-card-top span, :root[data-theme='light'] .list-card small { background: rgba(37, 99, 235, 0.1); color: #2563eb; font-weight: 600; }
+:root[data-theme='light'] .job-card p:not(.muted) { color: #334155; font-weight: 500; }
+:root[data-theme='light'] .searchbox { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+:root[data-theme='light'] .form-grid input, :root[data-theme='light'] .form-grid textarea, :root[data-theme='light'] .form-grid select, :root[data-theme='light'] .auth-panel input, :root[data-theme='light'] .modal input { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.2); color: #1a1a1a; }
+:root[data-theme='light'] .searchbox input { border: 0; background: transparent; outline: none; }
+:root[data-theme='light'] .segmented { background: #f1f5f9; } :root[data-theme='light'] .segmented button.active { background: #2563eb; color: #ffffff; }
+:root[data-theme='light'] .list-card, :root[data-theme='light'] .table-list > div { background: rgba(0, 0, 0, 0.03); }
+:root[data-theme='light'] .modal-backdrop { background: rgba(255, 255, 255, 0.8); }

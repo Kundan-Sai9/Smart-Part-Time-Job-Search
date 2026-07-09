@@ -86,7 +86,7 @@ public class JobRecommendationService {
             // If ML service fails, fall back to personalized heuristic recommendations
             System.out.println("ML recommender failed, falling back to local recommendations: " + e.getMessage());
             e.printStackTrace();
-            List<Job> allJobs = jobService.getAllJobs();
+            List<Job> allJobs = jobService.getAllJobs().stream().filter(j -> !"CLOSED".equals(j.getStatus())).collect(Collectors.toList());
             List<JobRecommendationScore> fallback = getFallbackRecommendations(user, allJobs, limit);
             double profileCompleteness = calculateProfileCompleteness(user);
             return new JobRecommendationResult(fallback, profileCompleteness, generateRecommendationInsights(user, fallback.stream().collect(Collectors.toList())), allJobs.size());
