@@ -14,6 +14,13 @@ public class JobRecommendationService {
     
     @Autowired
     private JobService jobService;
+
+    @Autowired
+    private ProfileScoringService profileScoringService;
+
+    private static double numberValue(Object value) {
+        return value instanceof Number ? ((Number) value).doubleValue() : 0.0;
+    }
     // History-aware personalization helpers were intentionally removed in favor of ML-based recommendations.
     // The remaining matching utilities below are kept as simple fallbacks.
 
@@ -27,16 +34,23 @@ public class JobRecommendationService {
             if (user.getSkills() != null) profileBuilder.append(user.getSkills()).append(" ");
             if (user.getBio() != null) profileBuilder.append(user.getBio()).append(" ");
             if (user.getExperience() != null) profileBuilder.append(user.getExperience()).append(" ");
+            if (user.getPreferredLocation() != null) profileBuilder.append("Preferred location: ").append(user.getPreferredLocation()).append(" ");
+            if (user.getPreferredJobType() != null) profileBuilder.append("Preferred job type: ").append(user.getPreferredJobType()).append(" ");
 
             String profileText = profileBuilder.toString().trim();
 
             // Call the external Python ML service (FastAPI) for recommendations
             org.springframework.web.client.RestTemplate rest = new org.springframework.web.client.RestTemplate();
-            String mlUrl = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:8000/recommend");
+            String mlUrl = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:5000/recommend");
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("user_profile_text", profileText);
             payload.put("top_k", limit);
+            payload.put("profile", Map.of(
+                "skills", user.getSkills() != null ? user.getSkills() : "",
+                "preferred_location", user.getPreferredLocation() != null ? user.getPreferredLocation() : "",
+                "preferred_job_type", user.getPreferredJobType() != null ? user.getPreferredJobType() : ""
+            ));
 
             @SuppressWarnings("unchecked")
             Map<String, Object> resp = rest.postForObject(mlUrl, payload, Map.class);
@@ -73,7 +87,16 @@ public class JobRecommendationService {
                     @SuppressWarnings("unchecked")
                     List<String> reasons = r.get("reasons") != null ? (List<String>) r.get("reasons") : getMatchReasons(user, job);
 
-                    recommendations.add(new JobRecommendationScore(job, score, reasons));
+                    recommendations.add(new JobRecommendationScore(
+                        job,
+                        score,
+                        reasons,
+                        numberValue(r.get("retrieval_similarity")),
+                        numberValue(r.get("skill_overlap")),
+                        numberValue(r.get("location_match")),
+                        numberValue(r.get("job_type_match")),
+                        r.get("matched_profile_terms")
+                    ));
                 }
             }
 
@@ -405,10 +428,6 @@ public class JobRecommendationService {
             }
         }
 
-        // Profile completeness hint (useful to explain low scores)
-        double completeness = calculateProfileCompleteness(user);
-        reasons.add("Profile completeness: " + (int)Math.round(completeness) + "%");
-
         // If we couldn't find any specific signal, fall back to a generic but helpful reason
         if (reasons.isEmpty()) {
             reasons.add("General profile compatibility — add skills and preferences for stronger matches");
@@ -433,17 +452,7 @@ public class JobRecommendationService {
      * Calculate profile completeness percentage
      */
     private double calculateProfileCompleteness(User user) {
-        int totalFields = 6;
-        int completedFields = 0;
-        
-        if (user.getSkills() != null && !user.getSkills().trim().isEmpty()) completedFields++;
-        if (user.getExperience() != null && !user.getExperience().trim().isEmpty()) completedFields++;
-        if (user.getPreferredLocation() != null && !user.getPreferredLocation().trim().isEmpty()) completedFields++;
-        if (user.getSalaryExpectation() != null && !user.getSalaryExpectation().trim().isEmpty()) completedFields++;
-        if (user.getBio() != null && !user.getBio().trim().isEmpty()) completedFields++;
-        if (user.getPreferredJobType() != null && !user.getPreferredJobType().trim().isEmpty()) completedFields++;
-        
-        return (double) completedFields / totalFields * 100;
+        return profileScoringService.calculateProfileCompleteness(user);
     }
     
     /**
@@ -520,15 +529,36 @@ public class JobRecommendationService {
         private final List<String> reasons;
         
         public JobRecommendationScore(Job job, double score, List<String> reasons) {
+            this(job, score, reasons, score, 0.0, 0.0, 0.0, List.of());
+        }
+
+        public JobRecommendationScore(Job job, double score, List<String> reasons, double retrievalSimilarity,
+                                      double skillOverlap, double locationMatch, double jobTypeMatch, Object matchedTerms) {
             this.job = job;
             this.score = score;
             this.reasons = reasons;
+            this.retrievalSimilarity = retrievalSimilarity;
+            this.skillOverlap = skillOverlap;
+            this.locationMatch = locationMatch;
+            this.jobTypeMatch = jobTypeMatch;
+            this.matchedProfileTerms = matchedTerms instanceof List<?> ? ((List<?>) matchedTerms).stream().map(String::valueOf).toList() : List.of();
         }
         
         // Getters
         public Job getJob() { return job; }
         public double getScore() { return score; }
         public List<String> getReasons() { return reasons; }
+        public double getRetrievalSimilarity() { return retrievalSimilarity; }
+        public double getSkillOverlap() { return skillOverlap; }
+        public double getLocationMatch() { return locationMatch; }
+        public double getJobTypeMatch() { return jobTypeMatch; }
+        public List<String> getMatchedProfileTerms() { return matchedProfileTerms; }
+
+        private final double retrievalSimilarity;
+        private final double skillOverlap;
+        private final double locationMatch;
+        private final double jobTypeMatch;
+        private final List<String> matchedProfileTerms;
     }
     
     /**

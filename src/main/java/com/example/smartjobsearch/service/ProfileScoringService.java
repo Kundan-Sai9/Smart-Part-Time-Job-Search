@@ -36,7 +36,7 @@ public class ProfileScoringService {
         return result;
     }
     
-    private int calculateProfileCompleteness(User user) {
+    public int calculateProfileCompleteness(User user) {
         int score = 0;
         int maxScore = 100;
         

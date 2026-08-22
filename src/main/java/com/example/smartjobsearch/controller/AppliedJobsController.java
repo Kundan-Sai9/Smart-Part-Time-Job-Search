@@ -148,6 +148,8 @@ public class AppliedJobsController {
                 }
                 appMap.put("status", app.getStatus());
                 appMap.put("applied_at", app.getAppliedAt() != null ? app.getAppliedAt().toString() : "");
+                appMap.put("resume_path", app.getResumePath());
+                appMap.put("resume_name", resumeName(app.getResumePath()));
                 result.add(appMap);
             }
             Map<String, Object> response = new HashMap<>();
@@ -256,7 +258,9 @@ public class AppliedJobsController {
                         appMap.put("application_id", app.getId());
                         appMap.put("username", username);
                         appMap.put("status", app.getStatus());
-                        appMap.put("applied_at", app.getAppliedAt().toString());
+                        appMap.put("applied_at", app.getAppliedAt() != null ? app.getAppliedAt().toString() : "");
+                        appMap.put("resume_path", app.getResumePath() != null ? app.getResumePath() : "");
+                        appMap.put("resume_name", resumeName(app.getResumePath()));
                         return appMap;
                     })
                     .collect(Collectors.toList());
@@ -367,7 +371,9 @@ public class AppliedJobsController {
                         "location", job.getLocation(),
                         "salary", job.getSalary(),
                         "description", job.getDescription(),
-                        "accepted_at", app.getAppliedAt().toString()
+                        "accepted_at", app.getAppliedAt() != null ? app.getAppliedAt().toString() : "",
+                        "resume_path", app.getResumePath() != null ? app.getResumePath() : "",
+                        "resume_name", resumeName(app.getResumePath())
                     ));
                 }
             }
@@ -379,6 +385,11 @@ public class AppliedJobsController {
 
     public static class ApplyJobRequest {
         public Long userId,jobId;
+    }
+
+    private String resumeName(String resumePath) {
+        if (resumePath == null || resumePath.isBlank()) return "";
+        return new File(resumePath).getName();
     }
     
     public static class ApproveApplicationRequest {

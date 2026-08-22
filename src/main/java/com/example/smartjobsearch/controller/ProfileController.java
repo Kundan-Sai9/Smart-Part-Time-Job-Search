@@ -39,27 +39,8 @@ public class ProfileController {
                 return ResponseEntity.notFound().build();
             }
 
-            // First try ML service
-            try {
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("name", user.getFullName() != null ? user.getFullName() : "");
-                payload.put("bio", user.getBio() != null ? user.getBio() : "");
-                payload.put("skills", user.getSkills() != null ? user.getSkills() : "");
-                payload.put("experience", user.getExperience() != null ? user.getExperience() : "");
-
-                String mlBase = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:8000");
-                String url = mlBase.endsWith("/") ? mlBase + "profile/score" : mlBase + "/profile/score";
-
-                @SuppressWarnings("unchecked")
-                Map<String, Object> resp = rest.postForObject(url, payload, Map.class);
-                if (resp != null) return ResponseEntity.ok(resp);
-            } catch (Exception e) {
-                // ML service failed - fallback to local scoring
-                System.out.println("ML profile endpoint failed, using local scoring: " + e.getMessage());
-            }
-
-            Map<String, Object> analysis = profileScoringService.analyzeProfile(user);
-            return ResponseEntity.ok(analysis);
+            // Profile Score measures profile completeness. Job matching is reported separately.
+            return ResponseEntity.ok(profileScoringService.analyzeProfile(user));
             
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of(
@@ -91,7 +72,7 @@ public class ProfileController {
                 payload.put("experience", user.getExperience() != null ? user.getExperience() : "");
                 payload.put("role", user.getJobTitle() != null ? user.getJobTitle() : "");
 
-                String mlBase = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:8000");
+                String mlBase = System.getenv().getOrDefault("ML_RECOMMENDER_URL", "http://localhost:5000");
                 String url = mlBase.endsWith("/") ? mlBase + "profile/analyze-agent" : mlBase + "/profile/analyze-agent";
 
                 @SuppressWarnings("unchecked")

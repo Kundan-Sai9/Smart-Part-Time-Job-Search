@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 import numpy as np
@@ -28,6 +27,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 JOB_CSV = os.path.join(DATA_DIR, 'jobs.csv')
+SERVING_JOBS = os.path.join(ARTIFACTS_DIR, 'jobs.parquet')
 # Training artifacts: write to training-specific files so serving artifacts (jobs.parquet/job_emb.npy)
 # remain under control of the running service (via /upload_jobs that persists production DB jobs).
 JOB_PARQUET = os.path.join(ARTIFACTS_DIR, 'train_jobs.parquet')
@@ -38,14 +38,21 @@ EMB_MODEL = 'all-MiniLM-L6-v2'
 
 REQUIRED_COLS = ['Job Title','Company','Location','Experience Level','Salary','Industry','Required Skills']
 
-if not os.path.exists(JOB_CSV):
-    raise SystemExit(f"Place your jobs CSV at {JOB_CSV}")
+if os.path.exists(SERVING_JOBS):
+    print('Loading live jobs from serving artifact...')
+    df = pd.read_parquet(SERVING_JOBS)
+elif os.path.exists(JOB_CSV):
+    print('Loading optional CSV import...')
+    df = pd.read_csv(JOB_CSV)
+else:
+    raise SystemExit(
+        'No job source found. Start the Java service and sync jobs through /upload_jobs '
+        f'or provide an optional import at {JOB_CSV}.'
+    )
 
-print('Loading CSV...')
-df = pd.read_csv(JOB_CSV)
 for c in REQUIRED_COLS:
     if c not in df.columns:
-        raise SystemExit(f"Missing column: {c}")
+        df[c] = ''
 
 # create job_text
 def safe_get(row, col):

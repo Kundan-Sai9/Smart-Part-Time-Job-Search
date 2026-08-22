@@ -173,8 +173,6 @@ public class JobController {
             );
             
             // Format response and respect requested limit
-            double profileCompletenessFraction = Math.max(0.0, Math.min(1.0, result.getProfileCompleteness() / 100.0));
-
             List<Map<String, Object>> formattedRecommendations = result.getRecommendations().stream()
                 .limit(limit)
                 .map(rec -> {
@@ -187,24 +185,22 @@ public class JobController {
                     jobData.put("salary", job.getSalary());
                     jobData.put("description", job.getDescription());
 
-                    // Adjust score using profile completeness to make match % more accurate and stable
+                    // Keep match strength faithful to the RAG/reranker score.
                     double rawScore = rec.getScore();
                     if (Double.isNaN(rawScore) || Double.isInfinite(rawScore)) rawScore = 0.0;
-                    // Blend: 85% recommender score, 15% profile completeness (tunable)
-                    double blended = rawScore * 0.85 + profileCompletenessFraction * 0.15;
-                    // Clamp to [0,1]
-                    double safe = Math.max(0.0, Math.min(1.0, blended));
+                    double safe = Math.max(0.0, Math.min(1.0, rawScore));
                     int percent = (int) Math.round(safe * 100.0);
-                    // If recommender or profile gives a non-zero signal, show a small visible floor
-                    if (percent == 0 && (rawScore > 0.0 || profileCompletenessFraction > 0.0)) {
-                        percent = 5; // minimal visible percent to avoid misleading 0%
-                    }
                     jobData.put("match_score", percent);
+                    jobData.put("match_strength", percent);
+                    jobData.put("retrieval_similarity", rec.getRetrievalSimilarity());
+                    jobData.put("skill_overlap", rec.getSkillOverlap());
+                    jobData.put("location_match", rec.getLocationMatch());
+                    jobData.put("job_type_match", rec.getJobTypeMatch());
+                    jobData.put("matched_profile_terms", rec.getMatchedProfileTerms());
 
-                    // Build match reasons and include profile completeness note
+                    // Match reasons should describe this job, not overall profile health.
                     java.util.List<String> reasons = new java.util.ArrayList<>();
                     if (rec.getReasons() != null) reasons.addAll(rec.getReasons());
-                    reasons.add("Profile completeness: " + Math.round(profileCompletenessFraction * 100) + "%");
                     jobData.put("match_reasons", reasons);
 
                     return jobData;
