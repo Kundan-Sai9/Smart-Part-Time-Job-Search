@@ -33,3 +33,17 @@ frontend/dist/
 
 ### VS Code ###
 .vscode/
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+ml/venv/
+venv/
+ENV/
+env/
+.env
+.env.*
+

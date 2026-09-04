@@ -1,8 +1,7 @@
-"""Retrain reranker from serving artifacts (ml/artifacts/jobs.parquet + job_emb.npy).
+"""Retrain reranker from job dataframe & embeddings.
 
-This script builds a synthetic training set from actual DB jobs and trains a LogisticRegression
-or LGBMClassifier depending on availability. It saves reranker.joblib (sklearn) and optionally
-reranker.pt (PyTorch) to ml/artifacts.
+This script/module builds synthetic training samples from jobs data and trains a LogisticRegression
+or LightGBM reranker, saving reranker.joblib to ml/artifacts.
 """
 import os
 import pandas as pd
@@ -17,129 +16,94 @@ ARTIFACTS = os.path.join(ROOT, 'artifacts')
 JOB_PARQUET = os.path.join(ARTIFACTS, 'jobs.parquet')
 JOB_EMB = os.path.join(ARTIFACTS, 'job_emb.npy')
 RERANKER_PATH = os.path.join(ARTIFACTS, 'reranker.joblib')
-RERANKER_PT = os.path.join(ARTIFACTS, 'reranker.pt')
 
 try:
-    import lightgbm as lgb
+    from lightgbm import LGBMClassifier
     LGB_AVAILABLE = True
 except Exception:
     LGB_AVAILABLE = False
 
-try:
-    import torch
-    import torch.nn as nn
-    import torch.optim as optim
-    TORCH_AVAILABLE = True
-except Exception:
-    TORCH_AVAILABLE = False
 
-if __name__ == '__main__':
-    # Prefer serving artifacts, but fall back to training artifacts if serving set is too small
-    use_train = False
-    if not os.path.exists(JOB_PARQUET) or not os.path.exists(JOB_EMB):
-        use_train = True
-    else:
-        df_tmp = pd.read_parquet(JOB_PARQUET)
-        if len(df_tmp) < 50:
-            print('Serving artifacts too small (found', len(df_tmp), 'jobs). Falling back to training artifacts for retraining.')
-            use_train = True
+def train_reranker_from_df(df: pd.DataFrame, embs: np.ndarray, save_path: str = RERANKER_PATH):
+    """Generates synthetic pairwise features and trains a logistic/LGBM reranker."""
+    if len(df) < 5 or embs is None or len(embs) == 0:
+        print('Dataset too small to train reranker.')
+        return None
 
-    if use_train:
-        JOB_PARQUET = os.path.join(ARTIFACTS, 'train_jobs.parquet')
-        JOB_EMB = os.path.join(ARTIFACTS, 'train_job_emb.npy')
-        if not os.path.exists(JOB_PARQUET) or not os.path.exists(JOB_EMB):
-            raise SystemExit('Training artifacts not found. Run ml/build_artifacts.py first.')
-
-    df = pd.read_parquet(JOB_PARQUET)
-    embs = np.load(JOB_EMB)
-    print('Loaded', len(df), 'jobs and embeddings shape', embs.shape)
-
-    # Build small synthetic training set by sampling user profiles from job skills
     X_rows = []
     y = []
-    for idx, row in df.sample(min(2000, len(df))).iterrows():
-        skills = '' if pd.isna(row.get('Required Skills','')) else str(row.get('Required Skills',''))
+    
+    sample_size = min(1000, len(df))
+    sample_df = df.sample(sample_size, random_state=42)
+
+    for idx, row in sample_df.iterrows():
+        skills = '' if pd.isna(row.get('Required Skills', '')) else str(row.get('Required Skills', ''))
         if not skills:
             continue
-        user_emb = embs[idx]
-        cand_idx = np.random.choice(len(df), size=min(50, len(df)), replace=False)
-        for j in cand_idx:
+            
+        pos_in_embs = df.index.get_loc(idx) if idx in df.index else 0
+        user_emb = embs[pos_in_embs]
+        
+        cand_indices = np.random.choice(len(df), size=min(30, len(df)), replace=False)
+        set_a = set([s.strip().lower() for s in skills.split(',') if s.strip()])
+
+        for j in cand_indices:
             job_emb = embs[j]
-            cos = float(np.dot(user_emb, job_emb) / (np.linalg.norm(user_emb) * np.linalg.norm(job_emb) + 1e-9))
-            job_skills = '' if pd.isna(df.iloc[j].get('Required Skills','')) else str(df.iloc[j].get('Required Skills',''))
-            set_a = set([s.strip().lower() for s in skills.split(',') if s.strip()])
+            norm_product = (np.linalg.norm(user_emb) * np.linalg.norm(job_emb) + 1e-9)
+            cos = float(np.dot(user_emb, job_emb) / norm_product)
+            
+            job_skills = '' if pd.isna(df.iloc[j].get('Required Skills', '')) else str(df.iloc[j].get('Required Skills', ''))
             set_b = set([s.strip().lower() for s in job_skills.split(',') if s.strip()])
-            overlap = len(set_a & set_b) / max(1, len(set_b)) if len(set_b)>0 else 0.0
+            overlap = len(set_a & set_b) / max(1, len(set_b)) if len(set_b) > 0 else 0.0
+            
             X_rows.append({'embed_cos': cos, 'skill_overlap': overlap})
             y.append(1 if (cos > 0.6 or overlap > 0.5) else 0)
 
-    if len(y) < 50:
-        raise SystemExit('Not enough samples to train reranker')
+    if len(y) < 30:
+        print('Insufficient synthetic samples generated for reranker training.')
+        return None
 
     X = pd.DataFrame(X_rows)
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    y_arr = np.array(y)
 
-    # Prefer LightGBM if available
+    if len(np.unique(y_arr)) < 2:
+        print('Synthetic labels contain only one class; skipping reranker fit.')
+        return None
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y_arr, test_size=0.2, random_state=42)
+
     if LGB_AVAILABLE:
         try:
-            from lightgbm import LGBMClassifier
-            print('Training LightGBM...')
-            clf = LGBMClassifier(n_estimators=200)
-            try:
-                clf.fit(X_train, y_train, eval_set=[(X_val, y_val)], early_stopping_rounds=20, verbose=False)
-            except TypeError:
-                clf.fit(X_train, y_train)
-            y_pred = clf.predict_proba(X_val)[:,1]
-            print('Val AUC:', roc_auc_score(y_val, y_pred))
-            joblib.dump(clf, RERANKER_PATH)
-            print('Saved', RERANKER_PATH)
+            clf = LGBMClassifier(n_estimators=100, random_state=42)
+            clf.fit(X_train, y_train)
+            clf_model = clf
         except Exception as e:
-            print('LightGBM training failed, falling back to LogisticRegression', e)
+            print('LGBMClassifier fit failed, fallback to LogisticRegression:', e)
+            clf_model = LogisticRegression(max_iter=200)
+            clf_model.fit(X_train, y_train)
+    else:
+        clf_model = LogisticRegression(max_iter=200)
+        clf_model.fit(X_train, y_train)
 
-    if not LGB_AVAILABLE:
-        print('Training LogisticRegression...')
-        clf = LogisticRegression(max_iter=200)
-        clf.fit(X_train, y_train)
-        y_pred = clf.predict_proba(X_val)[:,1]
-        print('Val AUC:', roc_auc_score(y_val, y_pred))
-        joblib.dump(clf, RERANKER_PATH)
-        print('Saved', RERANKER_PATH)
-
-    # Optional: train small PyTorch MLP
-    if TORCH_AVAILABLE:
+    if len(y_val) > 0 and len(np.unique(y_val)) > 1:
         try:
-            import numpy as _np
-            class SimpleMLP(nn.Module):
-                def __init__(self, in_dim):
-                    super().__init__()
-                    self.net = nn.Sequential(
-                        nn.Linear(in_dim,32), nn.ReLU(), nn.Linear(32,16), nn.ReLU(), nn.Linear(16,1), nn.Sigmoid()
-                    )
-                def forward(self,x):
-                    return self.net(x)
-            X_all = _np.vstack([X_train.values, X_val.values])
-            y_all = np.concatenate([y_train, y_val])
-            model = SimpleMLP(X_train.shape[1])
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model.to(device)
-            criterion = nn.BCELoss()
-            optimizer = optim.Adam(model.parameters(), lr=1e-3)
-            X_tensor = torch.tensor(X_all, dtype=torch.float32).to(device)
-            y_tensor = torch.tensor(y_all.reshape(-1,1), dtype=torch.float32).to(device)
-            dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
-            loader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=True)
-            for epoch in range(10):
-                model.train()
-                total=0.0
-                for xb,yb in loader:
-                    optimizer.zero_grad()
-                    preds = model(xb)
-                    loss = criterion(preds, yb)
-                    loss.backward()
-                    optimizer.step()
-                    total += loss.item()*xb.size(0)
-                print('Epoch', epoch+1, 'loss', total/len(dataset))
-            torch.save(model.state_dict(), RERANKER_PT)
-            print('Saved', RERANKER_PT)
-        except Exception as e:
-            print('PyTorch training failed', e)
+            probs = clf_model.predict_proba(X_val)[:, 1]
+            auc = roc_auc_score(y_val, probs)
+            print(f'Reranker validation AUC: {auc:.4f}')
+        except Exception:
+            pass
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    joblib.dump(clf_model, save_path)
+    print('Saved reranker model to', save_path)
+    return clf_model
+
+
+if __name__ == '__main__':
+    if not os.path.exists(JOB_PARQUET) or not os.path.exists(JOB_EMB):
+        print('Serving artifacts (jobs.parquet, job_emb.npy) not found in ml/artifacts.')
+    else:
+        df_jobs = pd.read_parquet(JOB_PARQUET)
+        job_embeddings = np.load(JOB_EMB)
+        print(f'Loaded {len(df_jobs)} jobs for reranker training.')
+        train_reranker_from_df(df_jobs, job_embeddings)

@@ -5,15 +5,6 @@ import numpy as np
 import joblib
 
 try:
-    import torch
-    import torch.nn as nn
-    TORCH_AVAILABLE = True
-except Exception:
-    torch = None
-    nn = None
-    TORCH_AVAILABLE = False
-
-try:
     from sentence_transformers import SentenceTransformer
     SENTENCE_TRANSFORMER_AVAILABLE = True
 except Exception:
@@ -49,7 +40,6 @@ MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'artifacts'
 JOB_META_PATH = os.path.join(MODEL_DIR, 'jobs.parquet')
 JOB_EMB_PATH = os.path.join(MODEL_DIR, 'job_emb.npy')
 RERANKER_PATH = os.path.join(MODEL_DIR, 'reranker.joblib')
-RERANKER_PT = os.path.join(MODEL_DIR, 'reranker.pt')
 FAISS_INDEX_DIR = os.path.join(MODEL_DIR, 'job_index')
 EMB_MODEL_NAME = 'all-MiniLM-L6-v2'
 
@@ -58,7 +48,6 @@ jobs = None
 job_embeddings = None
 embedder = None
 reranker = None
-neural_reranker = None
 vectorstore = None
 hf_embeddings = None
 upload_lock = threading.Lock()
@@ -71,11 +60,11 @@ except Exception:
 USE_RERANKER = os.environ.get('ML_USE_RERANKER', 'false').lower() == 'true'
 
 def load_artifacts():
-    global jobs, job_embeddings, embedder, reranker, neural_reranker, vectorstore, hf_embeddings
+    global jobs, job_embeddings, embedder, reranker, vectorstore, hf_embeddings
     
     print('Loading artifacts...')
     if not os.path.exists(MODEL_DIR):
-        print('Artifacts directory not found; create ml/artifacts and run the notebook to populate it')
+        print('Artifacts directory not found; create ml/artifacts to store models')
 
     if os.path.exists(JOB_META_PATH):
         jobs = pd.read_parquet(JOB_META_PATH)
@@ -96,7 +85,7 @@ def load_artifacts():
         except Exception as e:
             print('Failed to load sklearn reranker:', e)
     else:
-        print('Reranker enabled but reranker.joblib was not found; using retrieval similarity ranking')
+        print('Reranker enabled but reranker.joblib not found; using retrieval similarity ranking')
 
     if SENTENCE_TRANSFORMER_AVAILABLE:
         try:
@@ -105,13 +94,6 @@ def load_artifacts():
             print('SentenceTransformer load failed:', e)
 
     print('Using SKILL_BOOST =', SKILL_BOOST)
-
-    if USE_RERANKER and TORCH_AVAILABLE and os.path.exists(RERANKER_PT):
-        try:
-            neural_reranker = RERANKER_PT
-            print('PyTorch reranker found at', RERANKER_PT)
-        except Exception as e:
-            print('Failed to prepare PyTorch reranker loader:', e)
 
     if LANGCHAIN_RAG_AVAILABLE:
         try:
@@ -127,3 +109,4 @@ def load_artifacts():
                 print('FAISS index not found at startup')
         except Exception as e:
             print('Failed to initialize FAISS vector store:', e)
+

@@ -1,16 +1,12 @@
---extra-index-url https://download.pytorch.org/whl/cpu
 pandas
 numpy
 scikit-learn
 lightgbm
-sentence-transformers
 joblib
 fastapi
 uvicorn
-faiss-cpu
-langchain
 langchain-core
-langchain-community
 langchain-cohere
-langchain-huggingface
+cohere
+requests
 pyarrow

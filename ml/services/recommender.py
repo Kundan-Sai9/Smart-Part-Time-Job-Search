@@ -142,74 +142,22 @@ def get_recommendations(req: RecommendRequest):
         filtered = [c for c in candidates if c['skill_overlap'] > 0]
         if len(filtered) > 0:
             candidates = filtered
-        candidates = sorted(candidates, key=lambda x: (-x['skill_overlap'], -x['embed_cos']))
 
     used_reranker = None
 
-    if state.TORCH_AVAILABLE and state.neural_reranker and isinstance(state.neural_reranker, str) and __import__('os').path.exists(state.neural_reranker):
+    if state.reranker is not None and len(candidates) > 0:
         try:
-            torch = state.torch
-            nn = state.nn
-            class SimpleMLP(nn.Module):
-                def __init__(self, in_dim):
-                    super().__init__()
-                    self.net = nn.Sequential(
-                        nn.Linear(in_dim, 32),
-                        nn.ReLU(),
-                        nn.Linear(32, 16),
-                        nn.ReLU(),
-                        nn.Linear(16, 1),
-                        nn.Sigmoid()
-                    )
-
-                def forward(self, x):
-                    return self.net(x)
-
-            model = SimpleMLP(2)
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model.load_state_dict(torch.load(state.neural_reranker, map_location=device))
-            model.to(device)
-            model.eval()
-
-            X = np.array([[c['embed_cos'], c['skill_overlap']] for c in candidates], dtype=np.float32)
-            with torch.no_grad():
-                X_t = torch.tensor(X, dtype=torch.float32).to(device)
-                preds = model(X_t).cpu().numpy().ravel()
-
-            for i, c in enumerate(candidates):
-                c['score'] = float(preds[i])
-            candidates = sorted(candidates, key=lambda x: -x['score'])
-            used_reranker = 'neural'
-        except Exception as e:
-            print('Neural reranker failed to load/predict:', e)
-
-    if used_reranker is None and state.reranker is not None:
-        X = pd.DataFrame([{'embed_cos': c['embed_cos'], 'skill_overlap': c['skill_overlap']} for c in candidates])
-        try:
-            import joblib
+            X = pd.DataFrame([{'embed_cos': c['embed_cos'], 'skill_overlap': c['skill_overlap']} for c in candidates])
             scores = state.reranker.predict_proba(X)[:, 1] if hasattr(state.reranker, 'predict_proba') else state.reranker.predict(X)
             for i, c in enumerate(candidates):
                 c['score'] = float(scores[i])
-            candidates = sorted(candidates, key=lambda x: -x['score'])
             used_reranker = 'sklearn'
         except Exception as e:
             print('Reranker predict failed:', e)
-            if __import__('os').path.exists(state.RERANKER_PATH):
-                try:
-                    import joblib
-                    loaded = joblib.load(state.RERANKER_PATH)
-                    scores = loaded.predict_proba(X)[:, 1] if hasattr(loaded, 'predict_proba') else loaded.predict(X)
-                    for i, c in enumerate(candidates):
-                        c['score'] = float(scores[i])
-                    candidates = sorted(candidates, key=lambda x: -x['score'])
-                    used_reranker = 'sklearn'
-                except Exception as e2:
-                    print('Lazy load reranker failed:', e2)
 
     if used_reranker is None:
         for c in candidates:
             c['score'] = c['embed_cos']
-        candidates = sorted(candidates, key=lambda x: -x['score'])
 
     candidates = sorted(candidates, key=lambda x: -x['score'])
 

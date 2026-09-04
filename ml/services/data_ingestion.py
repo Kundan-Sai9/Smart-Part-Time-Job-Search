@@ -86,36 +86,8 @@ def upload_jobs(payload: UploadJobsRequest):
 
         if payload.train_reranker:
             try:
-                from sklearn.model_selection import train_test_split
-                from sklearn.linear_model import LogisticRegression
-                import joblib
-
-                feature_rows = []
-                labels = []
-                for idx, row in df.sample(min(500, len(df))).iterrows():
-                    skills = str(row.get('Required Skills', ''))
-                    if not skills:
-                        continue
-                    user_emb = state.embedder.encode([skills], convert_to_numpy=True)[0]
-                    cand_idx = np.random.choice(len(df), size=min(20, len(df)), replace=False)
-                    for j in cand_idx:
-                        job_emb = embs[j]
-                        cos = float(np.dot(user_emb, job_emb) / (np.linalg.norm(user_emb) * np.linalg.norm(job_emb) + 1e-9))
-                        job_skills = str(df.iloc[j].get('Required Skills', ''))
-                        set_a = set([s.strip().lower() for s in skills.split(',') if s.strip()])
-                        set_b = set([s.strip().lower() for s in job_skills.split(',') if s.strip()])
-                        overlap = len(set_a & set_b) / max(1, len(set_b)) if len(set_b) > 0 else 0.0
-                        feature_rows.append({'embed_cos': cos, 'skill_overlap': overlap})
-                        labels.append(1 if (cos > 0.6 or overlap > 0.5) else 0)
-
-                if len(labels) >= 50:
-                    X = pd.DataFrame(feature_rows)
-                    y = np.array(labels)
-                    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-                    clf = LogisticRegression(max_iter=200)
-                    clf.fit(X_train, y_train)
-                    joblib.dump(clf, state.RERANKER_PATH)
-                    state.reranker = clf
+                from retrain_reranker import train_reranker_from_df
+                state.reranker = train_reranker_from_df(df, embs)
             except Exception as e:
                 print('Reranker training failed during upload:', e)
 
