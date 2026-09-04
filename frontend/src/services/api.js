@@ -1,5 +1,7 @@
 import { buildAuthHeaders } from "../utils/auth.js";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
 async function parseResponse(response) {
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
@@ -10,15 +12,19 @@ async function parseResponse(response) {
 }
 
 export const api = {
+  getBaseUrl() {
+    return BASE_URL;
+  },
+
   async get(path) {
-    const response = await fetch(path, {
+    const response = await fetch(`${BASE_URL}${path}`, {
       headers: buildAuthHeaders(path),
     });
     return parseResponse(response);
   },
 
   async json(path, body, method = "POST") {
-    const response = await fetch(path, {
+    const response = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -30,7 +36,7 @@ export const api = {
   },
 
   async form(path, formData) {
-    const response = await fetch(path, {
+    const response = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
       headers: buildAuthHeaders(path),
       body: formData,
@@ -39,7 +45,7 @@ export const api = {
   },
 
   async delete(path) {
-    const response = await fetch(path, {
+    const response = await fetch(`${BASE_URL}${path}`, {
       method: "DELETE",
       headers: buildAuthHeaders(path),
     });

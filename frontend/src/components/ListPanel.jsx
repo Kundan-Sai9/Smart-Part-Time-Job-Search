@@ -1,5 +1,6 @@
 import React from "react";
 import { CalendarDays, FileText, MapPin } from "lucide-react";
+import { api } from "../services/api.js";
 
 function formatDate(value) {
   if (!value) return "Date unavailable";
@@ -49,7 +50,7 @@ export default function ListPanel({ title, icon, items, onWithdraw }) {
                   <FileText size={15} />
                   {attachedResumeName || "No resume attached"}
                   {resume && item.application_id && (
-                    <a className="resume-link" href={`/api/files/resume/${item.application_id}`} target="_blank" rel="noreferrer">View</a>
+                    <a className="resume-link" href={`${api.getBaseUrl()}/api/files/resume/${item.application_id}`} target="_blank" rel="noreferrer">View</a>
                   )}
                 </span>
               </div>

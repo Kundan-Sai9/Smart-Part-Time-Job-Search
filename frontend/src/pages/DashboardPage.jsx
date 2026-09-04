@@ -102,7 +102,7 @@ export default function DashboardPage({ userId, notify, go }) {
                     <strong>{app.username || "Unknown applicant"}</strong>
                     <div className="applicant-meta">
                       <span><CalendarDays size={14} />Applied on {formatDate(app.applied_at)}</span>
-                      <a href={`/api/files/resume/${app.application_id}`} target="_blank" rel="noreferrer">
+                      <a href={`${api.getBaseUrl()}/api/files/resume/${app.application_id}`} target="_blank" rel="noreferrer">
                         <FileText size={14} />View resume
                       </a>
                     </div>
