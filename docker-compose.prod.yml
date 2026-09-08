@@ -10,13 +10,13 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Memory limits to prevent the Free Tier EC2 from crashing
-      JAVA_OPTS: "-Xmx300m -Xms300m"
-      # These will be passed in from the EC2 instance terminal later
+      JAVA_OPTS: "-Xmx512m -Xms256m"
       SPRING_DATASOURCE_URL: ${RDS_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${RDS_DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${RDS_DB_PASSWORD}
       ML_RECOMMENDER_URL: http://ml-service:5000
+      COHERE_API_KEY: ${COHERE_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       - ml-service
 
